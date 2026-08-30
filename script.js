@@ -170,7 +170,7 @@ async function generateQuiz() {
 
     quizResult.textContent = 'Generating your custom quiz with AI... Please wait 🧠';
 
-    const apiKey = 'YOUR_API_KEY_HERE';
+    const apiKey = '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';
     const url = 'https://api.groq.com/openai/v1/chat/completions';
 
     const prompt = `Based on the following text, generate exactly ${count} review questions with answer keys to help a student study. Format them clearly:\n\n${text}`;
