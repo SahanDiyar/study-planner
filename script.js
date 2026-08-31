@@ -113,10 +113,11 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
   }
 });
 
-// --- INTERACTIVE STEP-BY-STEP AI QUIZ GENERATOR ---
+// --- INTERACTIVE QUIZ GENERATOR (MCQ vs NORMAL Q&A) ---
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notes = document.getElementById('study-notes').value;
   const numQuestions = document.getElementById('num-questions').value;
+  const quizType = document.getElementById('quiz-type').value; // 'Multiple Choice (MCQ)' or 'Normal (Q&A)'
   const outputDiv = document.getElementById('quiz-output');
 
   if (!notes.trim()) {
@@ -124,9 +125,12 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     return;
   }
 
-  outputDiv.innerHTML = "Generating your interactive quiz...";
+  outputDiv.innerHTML = "Generating your quiz...";
 
-  const prompt = `Based on the following text, generate exactly ${numQuestions} multiple-choice questions. 
+  let prompt = "";
+
+  if (quizType.includes("Multiple Choice")) {
+    prompt = `Based on the following text, generate exactly ${numQuestions} multiple-choice questions. 
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
 [
@@ -140,6 +144,20 @@ where "correct" is the index (0 to 3) of the correct option in the options array
 
 Text:
 ${notes}`;
+  } else {
+    prompt = `Based on the following text, generate exactly ${numQuestions} short-answer open questions where the user has to type an answer.
+You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
+Format:
+[
+  {
+    "question": "Question text here?",
+    "answer": "Expected brief correct answer here"
+  }
+]
+
+Text:
+${notes}`;
+  }
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -159,7 +177,6 @@ ${notes}`;
     if (data.choices && data.choices.length > 0) {
       let rawContent = data.choices[0].message.content.trim();
       
-      // Clean up markdown code blocks if the AI included them
       if (rawContent.startsWith("```json")) {
         rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
       } else if (rawContent.startsWith("```")) {
@@ -167,7 +184,13 @@ ${notes}`;
       }
 
       const quizQuestions = JSON.parse(rawContent);
-      startInteractiveQuiz(quizQuestions, outputDiv);
+      
+      if (quizType.includes("Multiple Choice")) {
+        startInteractiveMCQ(quizQuestions, outputDiv);
+      } else {
+        startInteractiveQA(quizQuestions, outputDiv);
+      }
+
     } else {
       outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Invalid response from AI.");
     }
@@ -176,7 +199,8 @@ ${notes}`;
   }
 });
 
-function startInteractiveQuiz(questions, container) {
+// --- MCQ INTERACTIVE FLOW ---
+function startInteractiveMCQ(questions, container) {
   let currentIndex = 0;
   let score = 0;
 
@@ -219,7 +243,6 @@ function startInteractiveQuiz(questions, container) {
       `;
       
       btn.addEventListener('click', () => {
-        // Highlight selection
         Array.from(optionsContainer.children).forEach(b => {
           b.style.background = 'white';
           b.style.borderColor = '#d1d5db';
@@ -241,8 +264,6 @@ function startInteractiveQuiz(questions, container) {
       submitBtn.disabled = true;
 
       const optionButtons = Array.from(optionsContainer.children);
-      
-      // Disable all option buttons after submit
       optionButtons.forEach(b => b.style.pointerEvents = 'none');
 
       if (selectedOptionIndex === q.correct) {
@@ -262,7 +283,87 @@ function startInteractiveQuiz(questions, container) {
 
       submitBtn.style.display = 'none';
 
-      // Add Next Question Button
+      const nextBtn = document.createElement('button');
+      nextBtn.innerText = currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question ➔';
+      nextBtn.style.cssText = `
+        margin-top: 12px; background: #3b82f6; color: white; border: none; 
+        padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
+      `;
+      nextBtn.addEventListener('click', () => {
+        currentIndex++;
+        renderQuestion();
+      });
+      container.appendChild(nextBtn);
+    });
+  }
+
+  renderQuestion();
+}
+
+// --- NORMAL (Q&A) TYPING FLOW ---
+function startInteractiveQA(questions, container) {
+  let currentIndex = 0;
+  let score = 0;
+
+  function renderQuestion() {
+    if (currentIndex >= questions.length) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <h3 style="color: #1f2937; margin-bottom: 10px;">Quiz Completed! 🎉</h3>
+          <p style="font-size: 1.1rem; color: #4b5563;">Your Score: <strong>${score} / ${questions.length}</strong></p>
+          <button id="restart-qa" style="margin-top: 15px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Retake Quiz</button>
+        </div>
+      `;
+      document.getElementById('restart-qa').addEventListener('click', () => {
+        currentIndex = 0;
+        score = 0;
+        renderQuestion();
+      });
+      return;
+    }
+
+    const q = questions[currentIndex];
+
+    container.innerHTML = `
+      <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Question ${currentIndex + 1} of ${questions.length}</div>
+      <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 1rem; color: #1f2937; font-weight: 500;">${q.question}</div>
+      <textarea id="user-answer" placeholder="Type your answer here..." style="width: 100%; height: 80px; padding: 10px; border: 1.5px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; margin-bottom: 10px; resize: none;"></textarea>
+      <button id="submit-qa" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Check Answer</button>
+      <div id="feedback" style="margin-top: 10px; font-weight: bold; font-size: 0.9rem;"></div>
+    `;
+
+    document.getElementById('submit-qa').addEventListener('click', () => {
+      const userText = document.getElementById('user-answer').value.trim();
+      if (!userText) {
+        alert("Please type an answer first!");
+        return;
+      }
+
+      const submitBtn = document.getElementById('submit-qa');
+      const feedback = document.getElementById('feedback');
+      const textarea = document.getElementById('user-answer');
+      
+      submitBtn.disabled = true;
+      textarea.disabled = true;
+
+      // Simple smart check: check if user's input contains key parts of the expected answer, or exact match case-insensitive
+      const userClean = userText.toLowerCase();
+      const correctClean = q.answer.toLowerCase();
+
+      // Basic matching logic: checks if key words overlap or if it contains the answer
+      const isCorrect = userClean.includes(correctClean) || correctClean.includes(userClean) || userClean === correctClean;
+
+      if (isCorrect) {
+        feedback.style.color = '#059669';
+        feedback.innerHTML = `Correct! Great job! <br><span style="font-size:0.85rem; color:#4b5563; font-weight:normal;">Expected: ${q.answer}</span>`;
+        score++;
+      } else {
+        feedback.style.color = '#dc2626';
+        feedback.innerHTML = `Not quite right. <br><span style="font-size:0.85rem; color:#4b5563; font-weight:normal;">Correct Answer: <strong>${q.answer}</strong></span>`;
+      }
+
+      submitBtn.style.display = 'none';
+
       const nextBtn = document.createElement('button');
       nextBtn.innerText = currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question ➔';
       nextBtn.style.cssText = `
