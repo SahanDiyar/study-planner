@@ -124,7 +124,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   const outputDiv = document.getElementById('quiz-output');
 
   if (!notes.trim()) {
-    outputDiv.innerHTML = "Please paste some study notes first!";
+    outputDiv.innerHTML = "Please paste some study notes firstkins!";
     return;
   }
 
@@ -148,13 +148,7 @@ where "correct" is the index (0 to 3) of the correct option in the options array
 Text:
 ${notes}`;
   } else {
-    prompt = `Based on the following text, create a comprehensive study worksheet containing a mix of question types: 
-1. Fill-in-the-blanks
-2. True/False
-3. Matching
-4. Short Answers
-
-CRITICAL INSTRUCTION: Do NOT put answers right under the questions. List all the questions first. At the very bottom of the output, include a distinct section titled "Answer Key" containing all the correct answers.
+    prompt = `Based on the following text, create a regular study worksheet with questions and short answers. Do NOT format as JSON. Just write out clear questions and put the answers at the very bottom in an Answer Key section.
 
 Text:
 ${notes}`;
@@ -178,6 +172,7 @@ ${notes}`;
     if (data.choices && data.choices.length > 0) {
       let rawContent = data.choices[0].message.content.trim();
       
+      // Strict check: Only parse JSON if user actually selected Multiple Choice
       if (quizType.includes("Multiple Choice")) {
         if (rawContent.startsWith("```json")) {
           rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
@@ -187,10 +182,10 @@ ${notes}`;
         const quizQuestions = JSON.parse(rawContent);
         startInteractiveMCQ(quizQuestions, outputDiv);
       } else {
-        // Normal Q&A Worksheet layout with answers at the bottom
+        // Normal Q&A Worksheet layout (Plain text/HTML view, safe from JSON parsing errors)
         outputDiv.innerHTML = `
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
-            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Worksheet (Blanks, True/False, Matching, Q&A)</h3>
+            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Worksheet & Questions</h3>
             <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
           </div>
         `;
