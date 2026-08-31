@@ -145,7 +145,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama3-70b-8192", // Universally supported legacy/stable production model string for Groq
+        model: "llama-3.1-8b-instant", // Currently supported active model
         messages: [{ role: "user", content: prompt }]
       })
     });
