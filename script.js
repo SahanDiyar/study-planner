@@ -1,4 +1,4 @@
-// --- TASK MANAGER LOGIC (Checkbox next to Delete) ---
+// --- TASK MANAGER LOGIC ---
 document.getElementById('add-task-btn').addEventListener('click', () => {
   const taskInput = document.getElementById('task-input');
   const taskText = taskInput.value.trim();
@@ -62,7 +62,6 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
   alert("Schedule feature coming soon!");
 });
 
-
 // --- AI QUIZ GENERATOR LOGIC ---
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notes = document.getElementById('study-notes').value;
@@ -94,7 +93,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "llama3-70b-8192", // Using a widely stable Groq model
         messages: [{ role: "user", content: prompt }]
       })
     });
@@ -105,7 +104,8 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       const aiReply = data.choices[0].message.content;
       outputDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${aiReply}</pre>`;
     } else {
-      outputDiv.innerHTML = "Error: No response received from AI. Check your API key.";
+      console.error("Groq Error Response:", data);
+      outputDiv.innerHTML = "Error: Invalid response from AI. Check console for details.";
     }
   } catch (error) {
     outputDiv.innerHTML = "Error generating quiz. Please check your network connection.";
