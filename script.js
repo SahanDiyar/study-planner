@@ -1,4 +1,4 @@
-// --- TASK MANAGER LOGIC ---
+// --- TASK MANAGER LOGIC (With Checkboxes) ---
 document.getElementById('add-task-btn').addEventListener('click', () => {
   const taskInput = document.getElementById('task-input');
   const taskText = taskInput.value.trim();
@@ -8,7 +8,6 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
     return;
   }
 
-  // Create a list container if it doesn't exist yet
   let taskList = document.getElementById('task-list');
   if (!taskList) {
     taskList = document.createElement('ul');
@@ -18,7 +17,6 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
     document.querySelector('.task-input-section').after(taskList);
   }
 
-  // Create task item
   const li = document.createElement('li');
   li.style.display = 'flex';
   li.style.justifyContent = 'space-between';
@@ -30,9 +28,25 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
   li.style.marginBottom = '8px';
 
   li.innerHTML = `
-    <span>${taskText}</span>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <input type="checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+      <span style="font-size: 0.95rem; color: #1f2937;">${taskText}</span>
+    </div>
     <button style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delete</button>
   `;
+
+  // Toggle line-through when checkbox is ticked
+  const checkbox = li.querySelector('input[type="checkbox"]');
+  const span = li.querySelector('span');
+  checkbox.addEventListener('change', () => {
+    if (checkbox.checked) {
+      span.style.textDecoration = 'line-through';
+      span.style.color = '#9ca3af';
+    } else {
+      span.style.textDecoration = 'none';
+      span.style.color = '#1f2937';
+    }
+  });
 
   // Delete button action
   li.querySelector('button').addEventListener('click', () => {
@@ -40,11 +54,11 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
   });
 
   taskList.appendChild(li);
-  taskInput.value = ""; // Clear input
+  taskInput.value = "";
 });
 
 
-// --- AI QUIZ GENERATOR LOGIC ---
+// --- AI QUIZ GENERATOR LOGIC (With your API Key built-in) ---
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notes = document.getElementById('study-notes').value;
   const numQuestions = document.getElementById('num-questions').value;
@@ -71,7 +85,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": "Bearer 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", // Make sure to put your real key here!
+        "Authorization": "Bearer gsk_UqoiKJ9ria3Ez7Bk4W4WGdyb3FYi1fNkTcBu60vTpmmZM5UDgIs",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
