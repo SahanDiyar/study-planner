@@ -145,7 +145,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant", // Currently supported active model
+        model: "openai/gpt-oss-20b", // Current active Groq model
         messages: [{ role: "user", content: prompt }]
       })
     });
