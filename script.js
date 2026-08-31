@@ -1,4 +1,4 @@
-// --- TASK MANAGER LOGIC (With Checkboxes) ---
+// --- TASK MANAGER LOGIC (Checkbox next to Delete) ---
 document.getElementById('add-task-btn').addEventListener('click', () => {
   const taskInput = document.getElementById('task-input');
   const taskText = taskInput.value.trim();
@@ -28,11 +28,11 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
   li.style.marginBottom = '8px';
 
   li.innerHTML = `
+    <span style="font-size: 0.95rem; color: #1f2937;">${taskText}</span>
     <div style="display: flex; align-items: center; gap: 10px;">
-      <input type="checkbox" style="width: 18px; height: 18px; cursor: pointer;">
-      <span style="font-size: 0.95rem; color: #1f2937;">${taskText}</span>
+      <input type="checkbox" style="width: 18px; height: 18px; cursor: pointer;" title="Mark as complete">
+      <button style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delete</button>
     </div>
-    <button style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delete</button>
   `;
 
   // Toggle line-through when checkbox is ticked
@@ -57,8 +57,13 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
   taskInput.value = "";
 });
 
+// --- SCHEDULE BUTTON NAVIGATION ---
+document.getElementById('schedule-btn').addEventListener('click', () => {
+  alert("Schedule feature coming soon!");
+});
 
-// --- AI QUIZ GENERATOR LOGIC (With your API Key built-in) ---
+
+// --- AI QUIZ GENERATOR LOGIC ---
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notes = document.getElementById('study-notes').value;
   const numQuestions = document.getElementById('num-questions').value;
