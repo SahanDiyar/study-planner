@@ -55,7 +55,7 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
   taskInput.value = "";
 });
 
-// --- SUNDAY - THURSDAY, 7 LESSONS SCHEDULE BUILDER ---
+// --- SUNDAY - THURSDAY SCHEDULE WITH LOCALSTORAGE SAVING ---
 document.getElementById('schedule-btn').addEventListener('click', () => {
   let scheduleBox = document.getElementById('schedule-view');
   
@@ -73,7 +73,7 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
     
     let tableHTML = `
       <h3 style="margin-bottom: 12px; font-size: 1.2rem; color: #1f2937;">Weekly School Schedule (Sunday - Thursday)</h3>
-      <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 10px;">Type your 7 subjects for each day below:</p>
+      <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 10px;">Your entries are automatically saved as you type!</p>
       <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem;">
         <thead>
           <tr style="background: #3b82f6; color: white;">
@@ -88,7 +88,12 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
     for (let i = 1; i <= 7; i++) {
       tableHTML += `<tr><td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">Period ${i}</td>`;
       days.forEach(day => {
-        tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;"><input type="text" placeholder="Subject ${i}" style="width: 90%; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem; text-align: center;"></td>`;
+        const storageKey = `schedule_${day}_period_${i}`;
+        const savedValue = localStorage.getItem(storageKey) || '';
+        tableHTML += `
+          <td style="padding: 6px; border: 1px solid #cbd5e1;">
+            <input type="text" data-key="${storageKey}" value="${savedValue}" placeholder="Subject ${i}" style="width: 90%; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+          </td>`;
       });
       tableHTML += `</tr>`;
     }
@@ -96,6 +101,14 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
     tableHTML += `</tbody></table>`;
     scheduleBox.innerHTML = tableHTML;
     document.querySelector('.container').appendChild(scheduleBox);
+
+    // Save inputs automatically on typing
+    scheduleBox.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', (e) => {
+        localStorage.setItem(e.target.dataset.key, e.target.value);
+      });
+    });
+
   } else {
     scheduleBox.style.display = scheduleBox.style.display === 'none' ? 'block' : 'none';
   }
@@ -109,7 +122,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   const outputDiv = document.getElementById('quiz-output');
 
   if (!notes.trim()) {
-    outputDiv.innerHTML = "Please paste some study notes firstkins!";
+    outputDiv.innerHTML = "Please paste some study notes first!";
     return;
   }
 
@@ -132,7 +145,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant", // Fully supported standard model for your new key
+        model: "llama-3.1-8b-instant", // Guaranteed active stable model for your key
         messages: [{ role: "user", content: prompt }]
       })
     });
