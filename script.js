@@ -146,8 +146,8 @@ Text:
 ${notes}`;
   } else {
     prompt = `Based on the following text, create a comprehensive study worksheet containing a mix of question types: Fill-in-the-blanks, True/False, Matching, and Short Answers. 
-Format the response clearly using clean HTML with headings, bullet points, or numbered lists so it looks like a real worksheet. 
-At the very bottom, include an "Answer Key" section with all the correct answers.
+Format the response clearly using clean HTML headings or bullet points. 
+At the very bottom, include an "Answer Key" section with all the correct answers so the student can check their work afterwards.
 
 Text:
 ${notes}`;
@@ -161,7 +161,7 @@ ${notes}`;
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-20b", // Blazing fast model
+        model: "llama-3.1-8b-instant", // Blazing fast active model
         messages: [{ role: "user", content: prompt }]
       })
     });
@@ -180,11 +180,11 @@ ${notes}`;
         const quizQuestions = JSON.parse(rawContent);
         startInteractiveMCQ(quizQuestions, outputDiv);
       } else {
-        // Normal (Q&A) Worksheet style rendered directly
+        // Normal Q&A Worksheet layout with answers at the bottom
         outputDiv.innerHTML = `
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
-            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📚 Study Worksheet & Practice Guide</h3>
-            <div style="font-size: 0.95rem;">${marked.parse ? marked.parse(rawContent) : rawContent.replace(/\n/g, '<br>')}</div>
+            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Worksheet (Blanks, True/False, Matching, Q&A)</h3>
+            <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
           </div>
         `;
       }
