@@ -35,7 +35,6 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
     </div>
   `;
 
-  // Toggle line-through when checkbox is ticked
   const checkbox = li.querySelector('input[type="checkbox"]');
   const span = li.querySelector('span');
   checkbox.addEventListener('change', () => {
@@ -48,7 +47,6 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
     }
   });
 
-  // Delete button action
   li.querySelector('button').addEventListener('click', () => {
     li.remove();
   });
@@ -93,7 +91,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama3-70b-8192", // Using a widely stable Groq model
+        model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: prompt }]
       })
     });
@@ -104,10 +102,10 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       const aiReply = data.choices[0].message.content;
       outputDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${aiReply}</pre>`;
     } else {
-      console.error("Groq Error Response:", data);
-      outputDiv.innerHTML = "Error: Invalid response from AI. Check console for details.";
+      // Show exact error message from Groq if it fails
+      outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Unknown error from Groq. Check API key validity.");
     }
   } catch (error) {
-    outputDiv.innerHTML = "Error generating quiz. Please check your network connection.";
+    outputDiv.innerHTML = "Network error generating quiz. Please check your connection.";
   }
 });
