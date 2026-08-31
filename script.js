@@ -109,7 +109,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   const outputDiv = document.getElementById('quiz-output');
 
   if (!notes.trim()) {
-    outputDiv.innerHTML = "Please paste some study notes first!";
+    outputDiv.innerHTML = "Please paste some study notes firstkins!";
     return;
   }
 
@@ -132,7 +132,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile", // Updated to current active Groq model
+        model: "llama-3.1-8b-instant", // Fully supported standard model for your new key
         messages: [{ role: "user", content: prompt }]
       })
     });
