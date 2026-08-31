@@ -165,7 +165,7 @@ ${notes}`;
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant", // Blazing fast model
+        model: "llama3-8b-8192", // Blazing fast model
         messages: [{ role: "user", content: prompt }]
       })
     });
