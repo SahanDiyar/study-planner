@@ -117,7 +117,11 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notes = document.getElementById('study-notes').value;
   const numQuestions = document.getElementById('num-questions').value;
-  const quizType = document.getElementById('quiz-type').value; 
+  
+  // Safely grab quizType element
+  const quizTypeEl = document.getElementById('quiz-type');
+  const quizType = quizTypeEl ? quizTypeEl.value : "Multiple Choice (MCQ)";
+  
   const outputDiv = document.getElementById('quiz-output');
 
   if (!notes.trim()) {
@@ -146,7 +150,7 @@ Text:
 ${notes}`;
   } else {
     prompt = `Based on the following text, create a comprehensive study worksheet containing a mix of question types: Fill-in-the-blanks, True/False, Matching, and Short Answers. 
-Format the response clearly using clean HTML headings or bullet points. 
+Format the response clearly using clean headings or bullet points. 
 At the very bottom, include an "Answer Key" section with all the correct answers so the student can check their work afterwards.
 
 Text:
@@ -161,7 +165,7 @@ ${notes}`;
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant", // Blazing fast active model
+        model: "llama-3.1-8b-instant", // Blazing fast model
         messages: [{ role: "user", content: prompt }]
       })
     });
@@ -183,7 +187,7 @@ ${notes}`;
         // Normal Q&A Worksheet layout with answers at the bottom
         outputDiv.innerHTML = `
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
-            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Worksheet (Blanks, True/False, Matching, Q&A)</h3>
+            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Worksheet & Practice Guide</h3>
             <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
           </div>
         `;
