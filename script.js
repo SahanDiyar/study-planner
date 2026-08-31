@@ -55,7 +55,7 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
   taskInput.value = "";
 });
 
-// --- COLORFUL TIME-GRID SCHEDULE VIEW ---
+// --- SUNDAY - THURSDAY, 7 LESSONS SCHEDULE BUILDER ---
 document.getElementById('schedule-btn').addEventListener('click', () => {
   let scheduleBox = document.getElementById('schedule-view');
   
@@ -68,58 +68,33 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
     scheduleBox.style.borderRadius = '8px';
     scheduleBox.style.marginTop = '20px';
     scheduleBox.style.overflowX = 'auto';
+
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
     
-    scheduleBox.innerHTML = `
-      <h3 style="margin-bottom: 12px; font-size: 1.2rem; color: #1f2937;">Daily Time-Grid Schedule</h3>
+    let tableHTML = `
+      <h3 style="margin-bottom: 12px; font-size: 1.2rem; color: #1f2937;">Weekly School Schedule (Sunday - Thursday)</h3>
+      <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 10px;">Type your 7 subjects for each day below:</p>
       <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem;">
         <thead>
-          <tr style="background: #f1f5f9; color: #334155;">
-            <th style="padding: 10px; border: 1px solid #cbd5e1;">Time</th>
-            <th style="padding: 10px; border: 1px solid #cbd5e1;">Monday</th>
-            <th style="padding: 10px; border: 1px solid #cbd5e1;">Tuesday</th>
-            <th style="padding: 10px; border: 1px solid #cbd5e1;">Wednesday</th>
-            <th style="padding: 10px; border: 1px solid #cbd5e1;">Thursday</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold;">8:00</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #f472b6; color: white;">Morning Meeting</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #60a5fa; color: white;">Math</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #f472b6; color: white;">Morning Meeting</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #34d399; color: white;">Science Review</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold;">9:00</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #c084fc; color: white;">Biology & Code</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #fb923c; color: white;">Chemistry</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #c084fc; color: white;">Physics</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #fb923c; color: white;">English/Lit</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold;">10:00</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #facc15; color: #1f2937;">Recess</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #facc15; color: #1f2937;">Recess</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #facc15; color: #1f2937;">Recess</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #facc15; color: #1f2937;">Recess</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold;">10:30</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #38bdf8; color: white;">Practice Drill</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #38bdf8; color: white;">Problem Solving</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #38bdf8; color: white;">Lab Work</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #38bdf8; color: white;">Writing</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold;">11:30</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #a7f3d0; color: #065f46;">Lunch</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #a7f3d0; color: #065f46;">Lunch</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #a7f3d0; color: #065f46;">Lunch</td>
-            <td style="padding: 8px; border: 1px solid #cbd5e1; background: #a7f3d0; color: #065f46;">Lunch</td>
-          </tr>
-        </tbody>
-      </table>
+          <tr style="background: #3b82f6; color: white;">
+            <th style="padding: 8px; border: 1px solid #cbd5e1;">Period</th>
     `;
+    
+    days.forEach(day => {
+      tableHTML += `<th style="padding: 8px; border: 1px solid #cbd5e1;">${day}</th>`;
+    });
+    tableHTML += `</tr></thead><tbody>`;
+
+    for (let i = 1; i <= 7; i++) {
+      tableHTML += `<tr><td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">Period ${i}</td>`;
+      days.forEach(day => {
+        tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;"><input type="text" placeholder="Subject ${i}" style="width: 90%; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem; text-align: center;"></td>`;
+      });
+      tableHTML += `</tr>`;
+    }
+
+    tableHTML += `</tbody></table>`;
+    scheduleBox.innerHTML = tableHTML;
     document.querySelector('.container').appendChild(scheduleBox);
   } else {
     scheduleBox.style.display = scheduleBox.style.display === 'none' ? 'block' : 'none';
@@ -157,7 +132,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "llama-3.3-70b-versatile", // Updated to current active Groq model
         messages: [{ role: "user", content: prompt }]
       })
     });
@@ -168,7 +143,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       const aiReply = data.choices[0].message.content;
       outputDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${aiReply}</pre>`;
     } else {
-      outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Invalid API key or model response.");
+      outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Invalid response from AI.");
     }
   } catch (error) {
     outputDiv.innerHTML = "Network error generating quiz. Please check your connection.";
