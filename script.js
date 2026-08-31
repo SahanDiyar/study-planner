@@ -165,7 +165,7 @@ ${notes}`;
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-70b-versatile", // Blazing fast model
+        model: "openai/gpt-oss-20b", // Blazing fast model
         messages: [{ role: "user", content: prompt }]
       })
     });
