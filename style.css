@@ -1,261 +1,162 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f6f9;
-    margin: 0;
-    padding: 20px;
-    color: #333;
+  background-color: #f3f4f6;
+  color: #1f2937;
+  padding: 20px;
 }
 
-/* Login Styling */
-.login-container {
-    max-width: 400px;
-    margin: 100px auto;
-    background: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
+.container {
+  max-width: 850px;
+  margin: 0 auto;
+  background: #ffffff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.login-container input {
-    padding: 10px;
-    font-size: 16px;
-    margin: 15px 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 15px;
 }
 
-.login-container button {
-    padding: 10px;
-    font-size: 16px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+.app-header h1 {
+  font-size: 1.8rem;
+  color: #111827;
 }
 
-.login-container button:hover {
-    background-color: #0056b3;
+.nav-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
-/* Planner Container Styling */
-.planner-container {
-    max-width: 800px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+#schedule-btn {
+  background-color: #3b82f6;
+  color: white;
+  margin-right: 8px;
 }
 
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 15px;
-    margin-bottom: 20px;
+#logout-btn {
+  background-color: #ef4444;
+  color: white;
 }
 
-.header-buttons {
-    display: flex;
-    gap: 10px;
+.task-input-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
 }
 
-.timetable-toggle-btn {
-    padding: 6px 12px;
-    background-color: #17a2b8;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+#task-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
 }
 
-.timetable-toggle-btn:hover {
-    background-color: #138496;
+#add-task-btn {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.logout-btn {
-    padding: 6px 12px;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.logout-btn:hover {
-    background-color: #c82333;
-}
-
-/* Timetable Section Styling */
-.timetable-section {
-    margin-bottom: 30px;
-    background: #fdfdfd;
-    border: 1px solid #e1e1e1;
-    padding: 20px;
-    border-radius: 6px;
-}
-
-.timetable-grid-wrapper {
-    overflow-x: auto;
-    margin-top: 15px;
-}
-
-#timetableGrid {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: center;
-}
-
-#timetableGrid th, #timetableGrid td {
-    border: 1px solid #ccc;
-    padding: 8px;
-}
-
-#timetableGrid th {
-    background-color: #333;
-    color: #fff;
-    font-size: 14px;
-}
-
-.timetable-input {
-    width: 90%;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 13px;
-    text-align: center;
-}
-
-/* Task Section */
-.task-section {
-    margin-bottom: 30px;
-}
-
-.task-input-group {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.task-input-group input {
-    flex: 1;
-    padding: 10px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-.task-input-group button {
-    padding: 10px 20px;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.task-input-group button:hover {
-    background-color: #218838;
-}
-
-#taskList {
-    list-style: none;
-    padding: 0;
-}
-
-#taskList li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #f9f9f9;
-    padding: 10px 15px;
-    border: 1px solid #e1e1e1;
-    border-radius: 4px;
-    margin-bottom: 8px;
-}
-
-#taskList li.completed .task-text {
-    text-decoration: line-through;
-    color: #888;
-}
-
-.task-text {
-    flex: 1;
-    cursor: pointer;
-    margin-left: 10px;
-    margin-right: 10px;
-}
-
-.delete-btn {
-    background-color: #ff4d4d;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.delete-btn:hover {
-    background-color: #cc0000;
-}
-
-/* AI Hub Section */
 .ai-hub-section {
-    background: #fdfdfd;
-    border: 1px solid #e1e1e1;
-    padding: 20px;
-    border-radius: 6px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 20px;
+  border-radius: 8px;
 }
 
-.ai-hub-section textarea {
-    width: 100%;
-    padding: 10px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    resize: vertical;
-    box-sizing: border-box;
+.ai-hub-section h2 {
+  font-size: 1.3rem;
+  margin-bottom: 5px;
 }
 
-.ai-controls {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin: 15px 0;
+.ai-hub-section p {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 15px;
 }
 
-.ai-controls select {
-    padding: 6px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+#study-notes {
+  width: 100%;
+  height: 120px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  resize: vertical;
+  margin-bottom: 15px;
 }
 
-.ai-controls button {
-    padding: 8px 16px;
-    background-color: #6f42c1;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+.quiz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
-.ai-controls button:hover {
-    background-color: #5a32a3;
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-.quiz-result-box {
-    background: #f1f3f5;
-    padding: 15px;
-    border-radius: 4px;
-    border: 1px solid #ced4da;
-    white-space: pre-wrap;
-    font-family: monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    margin-top: 15px;
+.control-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.quiz-controls select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: #fff;
+  font-size: 0.95rem;
+}
+
+#generate-btn {
+  background-color: #7c3aed;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+#generate-btn:hover {
+  background-color: #6d28d9;
+}
+
+.quiz-output-box {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  padding: 15px;
+  border-radius: 6px;
+  min-height: 100px;
+  font-size: 0.95rem;
+  color: #374151;
+  white-space: pre-wrap;
 }

@@ -1,83 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Study Planner</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Study Planner</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="container">
+    <header class="app-header">
+      <h1>My Study Planner</h1>
+      <div class="nav-buttons">
+        <button id="schedule-btn">My Schedule</button>
+        <button id="logout-btn">Log Out</button>
+      </div>
+    </header>
 
-    <!-- Login Container -->
-    <div id="loginContainer" class="login-container">
-        <h2>Student Portal Login</h2>
-        <p>Enter your name to access your planner</p>
-        <input type="text" id="usernameInput" placeholder="Your name...">
-        <button id="loginBtn">Log In</button>
+    <div class="task-input-section">
+      <input type="text" id="task-input" placeholder="Add homework or study plan...">
+      <button id="add-task-btn">Add Task</button>
     </div>
 
-    <!-- Main Planner Container (Hidden until logged in) -->
-    <div id="plannerContainer" class="planner-container" style="display: none;">
-        <header>
-            <h1>My Study Planner</h1>
-            <div class="header-buttons">
-                <button id="toggleTimetableBtn" class="timetable-toggle-btn">📅 My Schedule</button>
-                <button id="logoutBtn" class="logout-btn">Log Out</button>
-            </div>
-        </header>
+    <div class="ai-hub-section">
+      <h2>AI Study Hub (NotebookLM Style)</h2>
+      <p>Paste your study notes or paragraph below to generate custom practice questions:</p>
+      
+      <textarea id="study-notes" placeholder="Paste your study notes here..."></textarea>
 
-        <!-- Timetable Section (Toggled by Button) -->
-        <div id="timetableSection" class="timetable-section" style="display: none;">
-            <h2>Weekly School Schedule (Sun - Thu)</h2>
-            <p>Enter your 7 lessons for each day of the week:</p>
-            <div class="timetable-grid-wrapper">
-                <table id="timetableGrid">
-                    <thead>
-                        <tr>
-                            <th>Period</th>
-                            <th>Sunday</th>
-                            <th>Monday</th>
-                            <th>Tuesday</th>
-                            <th>Wednesday</th>
-                            <th>Thursday</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Generated via JS -->
-                    </tbody>
-                </table>
-            </div>
+      <div class="quiz-controls">
+        <div class="control-group">
+          <label for="question-type">Quiz Type:</label>
+          <select id="question-type">
+            <option value="normal">Normal (Q&A)</option>
+            <option value="mcq">Multiple Choice (MCQ)</option>
+          </select>
         </div>
 
-        <!-- Task Manager Section -->
-        <div class="task-section">
-            <div class="task-input-group">
-                <input type="text" id="taskInput" placeholder="Add homework or study plan...">
-                <button id="addTaskBtn">Add Task</button>
-            </div>
-            <ul id="taskList"></ul>
+        <div class="control-group">
+          <label for="num-questions">Number of Questions:</label>
+          <select id="num-questions">
+            <option value="1">1 Question</option>
+            <option value="3">3 Questions</option>
+            <option value="5" selected>5 Questions</option>
+            <option value="10">10 Questions</option>
+            <option value="15">15 Questions</option>
+            <option value="20">20 Questions</option>
+            <option value="25">25 Questions</option>
+            <option value="30">30 Questions</option>
+          </select>
         </div>
 
-        <!-- AI Study Hub Section -->
-        <div class="ai-hub-section">
-            <h2>AI Study Hub (NotebookLM Style)</h2>
-            <p>Paste your study notes or paragraph below to generate custom practice questions:</p>
-            <textarea id="studyText" rows="6" placeholder="Paste your study notes here..."></textarea>
-            
-            <div class="ai-controls">
-                <label for="questionCount">Number of Questions:</label>
-                <select id="questionCount">
-                    <option value="3">3 Questions</option>
-                    <option value="5" selected>5 Questions</option>
-                    <option value="10">10 Questions</option>
-                </select>
-                <button id="generateQuizBtn">Generate Quiz</button>
-            </div>
+        <button id="generate-btn">Generate Quiz</button>
+      </div>
 
-            <div id="quizResult" class="quiz-result-box">Your generated quiz will appear here...</div>
-        </div>
+      <div id="quiz-output" class="quiz-output-box">
+        Your generated quiz will appear here...
+      </div>
     </div>
+  </div>
 
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

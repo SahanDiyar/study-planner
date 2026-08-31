@@ -1,210 +1,94 @@
-const loginContainer = document.getElementById('loginContainer');
-const plannerContainer = document.getElementById('plannerContainer');
-const usernameInput = document.getElementById('usernameInput');
-const loginBtn = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
+// --- TASK MANAGER LOGIC ---
+document.getElementById('add-task-btn').addEventListener('click', () => {
+  const taskInput = document.getElementById('task-input');
+  const taskText = taskInput.value.trim();
 
-const taskInput = document.getElementById('taskInput');
-const addTaskBtn = document.getElementById('addTaskBtn');
-const taskList = document.getElementById('taskList');
+  if (!taskText) {
+    alert("Please enter a task first!");
+    return;
+  }
 
-// Check persistent login state on page load
-window.addEventListener('DOMContentLoaded', () => {
-    const savedUser = localStorage.getItem('studentUser');
-    if (savedUser) {
-        showPlanner();
-    }
-    buildTimetableGrid();
+  // Create a list container if it doesn't exist yet
+  let taskList = document.getElementById('task-list');
+  if (!taskList) {
+    taskList = document.createElement('ul');
+    taskList.id = 'task-list';
+    taskList.style.listStyle = 'none';
+    taskList.style.marginTop = '15px';
+    document.querySelector('.task-input-section').after(taskList);
+  }
+
+  // Create task item
+  const li = document.createElement('li');
+  li.style.display = 'flex';
+  li.style.justifyContent = 'space-between';
+  li.style.alignItems = 'center';
+  li.style.padding = '8px 12px';
+  li.style.background = '#f9fafb';
+  li.style.border = '1px solid #e5e7eb';
+  li.style.borderRadius = '6px';
+  li.style.marginBottom = '8px';
+
+  li.innerHTML = `
+    <span>${taskText}</span>
+    <button style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delete</button>
+  `;
+
+  // Delete button action
+  li.querySelector('button').addEventListener('click', () => {
+    li.remove();
+  });
+
+  taskList.appendChild(li);
+  taskInput.value = ""; // Clear input
 });
 
-// Log In Action
-function handleLogin() {
-    const username = usernameInput.value.trim();
-    if (username === '') return;
 
-    localStorage.setItem('studentUser', username);
-    showPlanner();
-}
+// --- AI QUIZ GENERATOR LOGIC ---
+document.getElementById('generate-btn').addEventListener('click', async () => {
+  const notes = document.getElementById('study-notes').value;
+  const numQuestions = document.getElementById('num-questions').value;
+  const quizType = document.getElementById('question-type').value;
+  const outputDiv = document.getElementById('quiz-output');
 
-// Log Out Action
-function handleLogout() {
-    localStorage.removeItem('studentUser');
-    usernameInput.value = '';
-    showLogin();
-}
+  if (!notes.trim()) {
+    outputDiv.innerHTML = "Please paste some study notes first!";
+    return;
+  }
 
-function showPlanner() {
-    loginContainer.style.display = 'none';
-    plannerContainer.style.display = 'block';
-}
+  outputDiv.innerHTML = "Generating your quiz with AI...";
 
-function showLogin() {
-    plannerContainer.style.display = 'none';
-    loginContainer.style.display = 'flex';
-}
+  let typeInstruction = "";
+  if (quizType === 'mcq') {
+    typeInstruction = "Format them as Multiple Choice Questions with 4 options (A, B, C, D) and clearly indicate the correct answer at the end of each question.";
+  } else {
+    typeInstruction = "Format them as normal questions with a clear answer key provided at the end.";
+  }
 
-// Function to add a task
-function addTask() {
-    const taskTextValue = taskInput.value.trim();
-    if (taskTextValue === '') return;
+  const prompt = `Based on the following text, generate exactly ${numQuestions} quiz questions. ${typeInstruction}\n\nText:\n${notes}`;
 
-    const li = document.createElement('li');
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer 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", // Make sure to put your real key here!
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
 
-    // Task text span
-    const span = document.createElement('span');
-    span.textContent = taskTextValue;
-    span.className = 'task-text';
+    const data = await response.json();
     
-    // Create the checkbox element
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.className = 'task-checkbox';
-    checkbox.addEventListener('change', () => {
-        li.classList.toggle('completed', checkbox.checked);
-    });
-
-    span.addEventListener('click', () => {
-        checkbox.checked = !checkbox.checked;
-        li.classList.toggle('completed', checkbox.checked);
-    });
-
-    // Delete button
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete';
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.addEventListener('click', () => {
-        taskList.removeChild(li);
-    });
-
-    li.appendChild(span);
-    li.appendChild(checkbox);
-    li.appendChild(deleteBtn);
-    taskList.appendChild(li);
-
-    taskInput.value = '';
-}
-
-// Event Listeners
-loginBtn.addEventListener('click', handleLogin);
-usernameInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleLogin();
-});
-
-logoutBtn.addEventListener('click', handleLogout);
-
-addTaskBtn.addEventListener('click', addTask);
-taskInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') addTask();
-});
-
-// --- Timetable Feature Logic ---
-const toggleTimetableBtn = document.getElementById('toggleTimetableBtn');
-const timetableSection = document.getElementById('timetableSection');
-const timetableGridBody = document.querySelector('#timetableGrid tbody');
-
-toggleTimetableBtn.addEventListener('click', () => {
-    if (timetableSection.style.display === 'none') {
-        timetableSection.style.display = 'block';
-        toggleTimetableBtn.textContent = 'Hide Schedule';
+    if (data.choices && data.choices.length > 0) {
+      const aiReply = data.choices[0].message.content;
+      outputDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${aiReply}</pre>`;
     } else {
-        timetableSection.style.display = 'none';
-        toggleTimetableBtn.textContent = '📅 My Schedule';
+      outputDiv.innerHTML = "Error: No response received from AI. Check your API key.";
     }
+  } catch (error) {
+    outputDiv.innerHTML = "Error generating quiz. Please check your network connection.";
+  }
 });
-
-const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-let timetableData = JSON.parse(localStorage.getItem('userTimetable')) || {};
-
-function buildTimetableGrid() {
-    timetableGridBody.innerHTML = '';
-
-    // 7 Periods
-    for (let p = 1; p <= 7; p++) {
-        const tr = document.createElement('tr');
-
-        // Period Label
-        const tdPeriod = document.createElement('td');
-        tdPeriod.textContent = `Period ${p}`;
-        tdPeriod.style.fontWeight = 'bold';
-        tr.appendChild(tdPeriod);
-
-        // Days (Sunday to Thursday)
-        days.forEach(day => {
-            const td = document.createElement('td');
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'timetable-input';
-            input.placeholder = 'Subject...';
-
-            const key = `p${p}-${day}`;
-            input.value = timetableData[key] || '';
-
-            // Save on input change
-            input.addEventListener('input', () => {
-                timetableData[key] = input.value;
-                localStorage.setItem('userTimetable', JSON.stringify(timetableData));
-            });
-
-            td.appendChild(input);
-            tr.appendChild(td);
-        });
-
-        timetableGridBody.appendChild(tr);
-    }
-}
-
-// AI Quiz Generator Logic
-const generateQuizBtn = document.getElementById('generateQuizBtn');
-const studyText = document.getElementById('studyText');
-const questionCount = document.getElementById('questionCount');
-const quizResult = document.getElementById('quizResult');
-
-async function generateQuiz() {
-    const text = studyText.value.trim();
-    const count = questionCount.value;
-
-    if (text === '') {
-        alert('Please paste some study text first!');
-        return;
-    }
-
-    quizResult.textContent = 'Generating your custom quiz with AI... Please wait 🧠';
-
-    const apiKey = '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';
-    const url = 'https://api.groq.com/openai/v1/chat/completions';
-
-    const prompt = `Based on the following text, generate exactly ${count} review questions with answer keys to help a student study. Format them clearly:\n\n${text}`;
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'openai/gpt-oss-20b',
-                messages: [
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.7
-            })
-        });
-
-        const data = await response.json();
-    
-        if (response.ok && data.choices && data.choices.length > 0) {
-            quizResult.textContent = data.choices[0].message.content;
-        } else {
-            console.error("API Error Response:", data);
-            quizResult.textContent = `Error: ${data.error ? data.error.message : 'Unknown API error'}`;
-        }
-    } catch (error) {
-        console.error(error);
-        quizResult.textContent = 'Network error occurred while connecting to Groq API.';
-    }
-}
-
-if (generateQuizBtn) {
-    generateQuizBtn.addEventListener('click', generateQuiz);
-}
