@@ -102,7 +102,6 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
     scheduleBox.innerHTML = tableHTML;
     document.querySelector('.container').appendChild(scheduleBox);
 
-    // Save inputs automatically on typing
     scheduleBox.querySelectorAll('input').forEach(input => {
       input.addEventListener('input', (e) => {
         localStorage.setItem(e.target.dataset.key, e.target.value);
@@ -114,11 +113,10 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
   }
 });
 
-// --- AI QUIZ GENERATOR LOGIC ---
+// --- INTERACTIVE STEP-BY-STEP AI QUIZ GENERATOR ---
 document.getElementById('generate-btn').addEventListener('click', async () => {
   const notes = document.getElementById('study-notes').value;
   const numQuestions = document.getElementById('num-questions').value;
-  const quizType = document.getElementById('question-type').value;
   const outputDiv = document.getElementById('quiz-output');
 
   if (!notes.trim()) {
@@ -126,16 +124,22 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     return;
   }
 
-  outputDiv.innerHTML = "Generating your quiz with AI...";
+  outputDiv.innerHTML = "Generating your interactive quiz...";
 
-  let typeInstruction = "";
-  if (quizType === 'mcq') {
-    typeInstruction = "Format them as Multiple Choice Questions with 4 options (A, B, C, D) and clearly indicate the correct answer at the end of each question.";
-  } else {
-    typeInstruction = "Format them as normal questions with a clear answer key provided at the end.";
+  const prompt = `Based on the following text, generate exactly ${numQuestions} multiple-choice questions. 
+You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
+Format:
+[
+  {
+    "question": "Question text here?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct": 0
   }
+]
+where "correct" is the index (0 to 3) of the correct option in the options array.
 
-  const prompt = `Based on the following text, generate exactly ${numQuestions} quiz questions. ${typeInstruction}\n\nText:\n${notes}`;
+Text:
+${notes}`;
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -145,7 +149,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-20b", // Current active Groq model
+        model: "openai/gpt-oss-20b",
         messages: [{ role: "user", content: prompt }]
       })
     });
@@ -153,12 +157,125 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     const data = await response.json();
     
     if (data.choices && data.choices.length > 0) {
-      const aiReply = data.choices[0].message.content;
-      outputDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${aiReply}</pre>`;
+      let rawContent = data.choices[0].message.content.trim();
+      
+      // Clean up markdown code blocks if the AI included them
+      if (rawContent.startsWith("```json")) {
+        rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (rawContent.startsWith("```")) {
+        rawContent = rawContent.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+
+      const quizQuestions = JSON.parse(rawContent);
+      startInteractiveQuiz(quizQuestions, outputDiv);
     } else {
       outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Invalid response from AI.");
     }
   } catch (error) {
-    outputDiv.innerHTML = "Network error generating quiz. Please check your connection.";
+    outputDiv.innerHTML = "Error generating quiz. Please try again.";
   }
 });
+
+function startInteractiveQuiz(questions, container) {
+  let currentIndex = 0;
+  let score = 0;
+
+  function renderQuestion() {
+    if (currentIndex >= questions.length) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <h3 style="color: #1f2937; margin-bottom: 10px;">Quiz Completed! 🎉</h3>
+          <p style="font-size: 1.1rem; color: #4b5563;">Your Score: <strong>${score} / ${questions.length}</strong></p>
+          <button id="restart-quiz" style="margin-top: 15px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Retake Quiz</button>
+        </div>
+      `;
+      document.getElementById('restart-quiz').addEventListener('click', () => {
+        currentIndex = 0;
+        score = 0;
+        renderQuestion();
+      });
+      return;
+    }
+
+    const q = questions[currentIndex];
+    
+    container.innerHTML = `
+      <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Question ${currentIndex + 1} of ${questions.length}</div>
+      <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 1rem; color: #1f2937; font-weight: 500;">${q.question}</div>
+      <div id="options-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;"></div>
+      <button id="submit-ans" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;" disabled>Submit Answer</button>
+      <div id="feedback" style="margin-top: 10px; font-weight: bold; font-size: 0.9rem;"></div>
+    `;
+
+    const optionsContainer = document.getElementById('options-container');
+    let selectedOptionIndex = null;
+
+    q.options.forEach((opt, idx) => {
+      const btn = document.createElement('button');
+      btn.innerText = opt;
+      btn.style.cssText = `
+        text-align: left; padding: 10px 14px; background: white; border: 1.5px solid #d1d5db; 
+        border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #374151; transition: all 0.2s;
+      `;
+      
+      btn.addEventListener('click', () => {
+        // Highlight selection
+        Array.from(optionsContainer.children).forEach(b => {
+          b.style.background = 'white';
+          b.style.borderColor = '#d1d5db';
+        });
+        btn.style.background = '#eff6ff';
+        btn.style.borderColor = '#3b82f6';
+        selectedOptionIndex = idx;
+        document.getElementById('submit-ans').disabled = false;
+      });
+
+      optionsContainer.appendChild(btn);
+    });
+
+    document.getElementById('submit-ans').addEventListener('click', () => {
+      if (selectedOptionIndex === null) return;
+
+      const submitBtn = document.getElementById('submit-ans');
+      const feedback = document.getElementById('feedback');
+      submitBtn.disabled = true;
+
+      const optionButtons = Array.from(optionsContainer.children);
+      
+      // Disable all option buttons after submit
+      optionButtons.forEach(b => b.style.pointerEvents = 'none');
+
+      if (selectedOptionIndex === q.correct) {
+        optionButtons[selectedOptionIndex].style.background = '#d1fae5';
+        optionButtons[selectedOptionIndex].style.borderColor = '#10b981';
+        feedback.style.color = '#059669';
+        feedback.innerText = "Correct! Great job!";
+        score++;
+      } else {
+        optionButtons[selectedOptionIndex].style.background = '#fee2e2';
+        optionButtons[selectedOptionIndex].style.borderColor = '#ef4444';
+        optionButtons[q.correct].style.background = '#d1fae5';
+        optionButtons[q.correct].style.borderColor = '#10b981';
+        feedback.style.color = '#dc2626';
+        feedback.innerText = "Incorrect.";
+      }
+
+      submitBtn.style.display = 'none';
+
+      // Add Next Question Button
+      const nextBtn = document.createElement('button');
+      nextBtn.innerText = currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question ➔';
+      nextBtn.style.cssText = `
+        margin-top: 12px; background: #3b82f6; color: white; border: none; 
+        padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
+      `;
+      nextBtn.addEventListener('click', () => {
+        currentIndex++;
+        renderQuestion();
+      });
+      container.appendChild(nextBtn);
+    });
+  }
+
+  renderQuestion();
+}
