@@ -55,9 +55,42 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
   taskInput.value = "";
 });
 
-// --- SCHEDULE BUTTON NAVIGATION ---
+// --- SCHEDULE VIEW TOGGLE ---
 document.getElementById('schedule-btn').addEventListener('click', () => {
-  alert("Schedule feature coming soon!");
+  let scheduleBox = document.getElementById('schedule-view');
+  
+  if (!scheduleBox) {
+    scheduleBox = document.createElement('div');
+    scheduleBox.id = 'schedule-view';
+    scheduleBox.style.background = '#f9fafb';
+    scheduleBox.style.border = '1px solid #e5e7eb';
+    scheduleBox.style.padding = '20px';
+    scheduleBox.style.borderRadius = '8px';
+    scheduleBox.style.marginTop = '20px';
+    
+    scheduleBox.innerHTML = `
+      <h3 style="margin-bottom: 10px; font-size: 1.2rem; color: #1f2937;">Weekly Timetable</h3>
+      <table style="width: 100%; border-collapse: collapse; background: #fff;">
+        <thead>
+          <tr style="background: #3b82f6; color: white;">
+            <th style="padding: 8px; border: 1px solid #d1d5db;">Day</th>
+            <th style="padding: 8px; border: 1px solid #d1d5db;">Subject / Plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding: 8px; border: 1px solid #d1d5db; font-weight: bold;">Monday</td><td style="padding: 8px; border: 1px solid #d1d5db;">Biology & Code Review</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #d1d5db; font-weight: bold;">Tuesday</td><td style="padding: 8px; border: 1px solid #d1d5db;">Chemistry Practice</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #d1d5db; font-weight: bold;">Wednesday</td><td style="padding: 8px; border: 1px solid #d1d5db;">Physics & Quiz Prep</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #d1d5db; font-weight: bold;">Thursday</td><td style="padding: 8px; border: 1px solid #d1d5db;">English & Literature</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #d1d5db; font-weight: bold;">Weekend</td><td style="padding: 8px; border: 1px solid #d1d5db;">Project Building & Rest</td></tr>
+        </tbody>
+      </table>
+    `;
+    document.querySelector('.container').appendChild(scheduleBox);
+  } else {
+    // Toggle visibility if already open
+    scheduleBox.style.display = scheduleBox.style.display === 'none' ? 'block' : 'none';
+  }
 });
 
 // --- AI QUIZ GENERATOR LOGIC ---
@@ -87,7 +120,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": "Bearer gsk_UqoiKJ9ria3Ez7Bk4W4WGdyb3FYi1fNkTcBu60vTpmmZM5UDgIs",
+        "Authorization": "Bearer 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", // Replace this with your fresh Groq key!
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -102,8 +135,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
       const aiReply = data.choices[0].message.content;
       outputDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${aiReply}</pre>`;
     } else {
-      // Show exact error message from Groq if it fails
-      outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Unknown error from Groq. Check API key validity.");
+      outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Invalid API key or quota exceeded.");
     }
   } catch (error) {
     outputDiv.innerHTML = "Network error generating quiz. Please check your connection.";
