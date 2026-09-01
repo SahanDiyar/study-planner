@@ -151,7 +151,7 @@ ${notes}`;
   } else {
     prompt = `Based on the following text, create exactly ${numQuestions} standard study questions without any multiple-choice options. 
 List all the questions first numbered sequentially. 
-Then, provide a separate "Answer Key" section containing the answers at the very bottom, after all the questions have been listed. Do not place answers directly under each individual question.
+Then, provide a separate Answer Key section containing the answers at the very bottom, after all the questions have been listed. Do not place answers directly under each individual question.
 
 Text:
 ${notes}`;
@@ -187,7 +187,7 @@ ${notes}`;
         // Normal Q&A Worksheet layout (Plain text view with separated Answer Key at the bottom)
         outputDiv.innerHTML = `
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
-            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Questions & Worksheet</h3>
+            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">Study Questions & Worksheet</h3>
             <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
           </div>
         `;
@@ -210,7 +210,7 @@ function startInteractiveMCQ(questions, container) {
     if (currentIndex >= questions.length) {
       container.innerHTML = `
         <div style="text-align: center; padding: 20px;">
-          <h3 style="color: #1f2937; margin-bottom: 10px;">Quiz Completed! 🎉</h3>
+          <h3 style="color: #1f2937; margin-bottom: 10px;">Quiz Completed!</h3>
           <p style="font-size: 1.1rem; color: #4b5563;">Your Score: <strong>${score} / ${questions.length}</strong></p>
           <button id="restart-quiz" style="margin-top: 15px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Retake Quiz</button>
         </div>
@@ -252,4 +252,52 @@ function startInteractiveMCQ(questions, container) {
         btn.style.background = '#eff6ff';
         btn.style.borderColor = '#3b82f6';
         selectedOptionIndex = idx;
-        document.getElementById('submit-ans
+        document.getElementById('submit-ans').disabled = false;
+      });
+
+      optionsContainer.appendChild(btn);
+    });
+
+    document.getElementById('submit-ans').addEventListener('click', () => {
+      if (selectedOptionIndex === null) return;
+
+      const submitBtn = document.getElementById('submit-ans');
+      const feedback = document.getElementById('feedback');
+      submitBtn.disabled = true;
+
+      const optionButtons = Array.from(optionsContainer.children);
+      optionButtons.forEach(b => b.style.pointerEvents = 'none');
+
+      if (selectedOptionIndex === q.correct) {
+        optionButtons[selectedOptionIndex].style.background = '#d1fae5';
+        optionButtons[selectedOptionIndex].style.borderColor = '#10b981';
+        feedback.style.color = '#059669';
+        feedback.innerText = "Correct! Great job!";
+        score++;
+      } else {
+        optionButtons[selectedOptionIndex].style.background = '#fee2e2';
+        optionButtons[selectedOptionIndex].style.borderColor = '#ef4444';
+        optionButtons[q.correct].style.background = '#d1fae5';
+        optionButtons[q.correct].style.borderColor = '#10b981';
+        feedback.style.color = '#dc2626';
+        feedback.innerText = "Incorrect.";
+      }
+
+      submitBtn.style.display = 'none';
+
+      const nextBtn = document.createElement('button');
+      nextBtn.innerText = currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question ->';
+      nextBtn.style.cssText = `
+        margin-top: 12px; background: #3b82f6; color: white; border: none; 
+        padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
+      `;
+      nextBtn.addEventListener('click', () => {
+        currentIndex++;
+        renderQuestion();
+      });
+      container.appendChild(nextBtn);
+    });
+  }
+
+  renderQuestion();
+}
