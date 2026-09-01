@@ -1,70 +1,91 @@
-<!-- AI STUDY HUB SECTION -->
-<div class="card" style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 20px;">
-  <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin-bottom: 4px;">AI Study Hub (NotebookLM Style)</h2>
-  <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 15px;">Paste your study notes or paragraph below to generate custom practice questions:</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Study Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body style="background: #f3f4f6; font-family: Arial, sans-serif; padding: 20px; color: #1f2937;">
 
-  <!-- Notes Input Box -->
-  <textarea id="study-notes" placeholder="Paste your study notes here..." style="width: 100%; height: 100px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; margin-bottom: 20px; box-sizing: border-box;"></textarea>
-
-  <!-- Two-Column Layout Grid -->
-  <div style="display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; margin-bottom: 20px;">
+  <div class="container" style="max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
     
-    <!-- LEFT COLUMN: Quiz Controls Stacked (Red Box Area) -->
-    <div style="display: flex; flex-direction: column; gap: 15px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
-      <div>
-        <label for="quiz-type" style="display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 5px;">Quiz Type:</label>
-        <select id="quiz-type" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; background: white;">
-          <option value="Normal (Q&A)">Normal (Q&A)</option>
-          <option value="Multiple Choice">Multiple Choice</option>
-        </select>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1 style="font-size: 1.8rem; font-weight: bold; margin: 0;">My Study Planner</h1>
+      <div style="display: flex; gap: 10px;">
+        <button id="schedule-btn" style="background: #3b82f6; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">My Schedule</button>
+        <button style="background: #ef4444; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">Log Out</button>
       </div>
-
-      <div>
-        <label for="num-questions" style="display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 5px;">Number of Questions:</label>
-        <select id="num-questions" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; background: white;">
-          <option value="5">5 Questions</option>
-          <option value="10">10 Questions</option>
-          <option value="15">15 Questions</option>
-        </select>
-      </div>
-
-      <button id="generate-btn" style="background: #8b5cf6; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; width: 100%;">Generate Quiz</button>
     </div>
 
-    <!-- RIGHT COLUMN: Flashcard Study Mode -->
-    <div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
-      <h3 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 4px;">Flashcard Study Mode</h3>
-      <p style="font-size: 0.8rem; color: #6b7280; margin-bottom: 12px;">Generate flashcards automatically from your notes or add them manually!</p>
-      
-      <!-- Mode Switcher -->
-      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-        <button id="mode-auto-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">Auto-Generate (AI)</button>
-        <button id="mode-manual-btn" style="background: #e5e7eb; color: #374151; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">Manual Entry</button>
-      </div>
+    <div class="task-input-section" style="display: flex; gap: 10px; margin-bottom: 25px;">
+      <input type="text" id="task-input" placeholder="Add homework or study plan..." style="flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem;">
+      <button id="add-task-btn" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95rem;">Add Task</button>
+    </div>
 
-      <!-- Auto Section Container -->
-      <div id="flashcard-auto-container">
-        <textarea id="flashcard-notes" placeholder="Paste notes here to generate flashcards..." style="width: 100%; height: 60px; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem; margin-bottom: 8px; box-sizing: border-box;"></textarea>
-        <button id="generate-flashcards-btn" style="background: #10b981; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Generate Flashcards</button>
-      </div>
+    <div class="card" style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 20px;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin-bottom: 4px;">AI Study Hub (NotebookLM Style)</h2>
+      <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 15px;">Paste your study notes or paragraph below to generate custom practice questions:</p>
 
-      <!-- Manual Section Container -->
-      <div id="flashcard-manual-container" style="display: none;">
-        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-          <input type="text" id="manual-front" placeholder="Front of card (Question)" style="flex: 1; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem;">
-          <input type="text" id="manual-back" placeholder="Back of card (Answer)" style="flex: 1; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem;">
+      <textarea id="study-notes" placeholder="Paste your study notes here..." style="width: 100%; height: 100px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; margin-bottom: 20px; box-sizing: border-box;"></textarea>
+
+      <div style="display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; margin-bottom: 20px;">
+        
+        <div style="display: flex; flex-direction: column; gap: 15px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+          <div>
+            <label for="quiz-type" style="display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 5px;">Quiz Type:</label>
+            <select id="quiz-type" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; background: white;">
+              <option value="Normal (Q&A)">Normal (Q&A)</option>
+              <option value="Multiple Choice">Multiple Choice</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="num-questions" style="display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 5px;">Number of Questions:</label>
+            <select id="num-questions" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; background: white;">
+              <option value="5">5 Questions</option>
+              <option value="10">10 Questions</option>
+              <option value="15">15 Questions</option>
+            </select>
+          </div>
+
+          <button id="generate-btn" style="background: #8b5cf6; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; width: 100%;">Generate Quiz</button>
         </div>
-        <button id="add-manual-card-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Add to Deck</button>
+
+        <div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+          <h3 style="font-size: 1rem; font-weight: 700; color: #1f2937; margin-bottom: 4px;">Flashcard Study Mode</h3>
+          <p style="font-size: 0.8rem; color: #6b7280; margin-bottom: 12px;">Generate flashcards automatically from your notes or add them manually!</p>
+          
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button id="mode-auto-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">Auto-Generate (AI)</button>
+            <button id="mode-manual-btn" style="background: #e5e7eb; color: #374151; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">Manual Entry</button>
+          </div>
+
+          <div id="flashcard-auto-container">
+            <textarea id="flashcard-notes" placeholder="Paste notes here to generate flashcards..." style="width: 100%; height: 60px; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem; margin-bottom: 8px; box-sizing: border-box;"></textarea>
+            <button id="generate-flashcards-btn" style="background: #10b981; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Generate Flashcards</button>
+          </div>
+
+          <div id="flashcard-manual-container" style="display: none;">
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <input type="text" id="manual-front" placeholder="Front of card (Question)" style="flex: 1; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem;">
+              <input type="text" id="manual-back" placeholder="Back of card (Answer)" style="flex: 1; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem;">
+            </div>
+            <button id="add-manual-card-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Add to Deck</button>
+          </div>
+
+          <div id="flashcard-display-area" style="margin-top: 10px;"></div>
+        </div>
+
       </div>
 
-      <!-- Flashcard Viewport Area -->
-      <div id="flashcard-display-area" style="margin-top: 10px;"></div>
+      <div id="quiz-output" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; min-height: 80px; background: #ffffff; font-size: 0.9rem; color: #6b7280;">
+        Your generated quiz will appear here...
+      </div>
     </div>
 
   </div>
 
-  <!-- BOTTOM CONTAINER: Quiz Display Output Area (Yellow Box Area) -->
-  <div id="quiz-output" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; min-height: 80px; background: #ffffff; font-size: 0.9rem; color: #6b7280;">
-    Your generated quiz will appear here...
-  </div>
-</div>
+  <script src="script.js"></script>
+</body>
+</html>
