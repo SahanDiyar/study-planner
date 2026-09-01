@@ -119,20 +119,21 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   const numQuestions = document.getElementById('num-questions').value;
   
   const quizTypeEl = document.getElementById('quiz-type');
-  const quizType = quizTypeEl ? quizTypeEl.value : "Multiple Choice (MCQ)";
+  const quizType = quizTypeEl ? quizTypeEl.value.trim() : "Multiple Choice (MCQ)";
   
   const outputDiv = document.getElementById('quiz-output');
 
   if (!notes.trim()) {
-    outputDiv.innerHTML = "Please paste some study notes firstkins!";
+    outputDiv.innerHTML = "Please paste some study notes first!";
     return;
   }
 
   outputDiv.innerHTML = "Generating quickly...";
 
   let prompt = "";
+  const isMCQ = quizType.includes("Multiple Choice") || quizType.includes("MCQ");
 
-  if (quizType.includes("Multiple Choice")) {
+  if (isMCQ) {
     prompt = `Based on the following text, generate exactly ${numQuestions} multiple-choice questions. 
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
@@ -148,7 +149,7 @@ where "correct" is the index (0 to 3) of the correct option in the options array
 Text:
 ${notes}`;
   } else {
-    prompt = `Based on the following text, create a regular study worksheet with questions and short answers. Do NOT format as JSON. Just write out clear questions and put the answers at the very bottom in an Answer Key section.
+    prompt = `Based on the following text, create a regular study worksheet with questions, fill-in-the-blanks, or short answers. Do NOT format as JSON. Just write out clear questions and put the answers at the very bottom in an Answer Key section.
 
 Text:
 ${notes}`;
@@ -172,8 +173,7 @@ ${notes}`;
     if (data.choices && data.choices.length > 0) {
       let rawContent = data.choices[0].message.content.trim();
       
-      // Strict check: Only parse JSON if user actually selected Multiple Choice
-      if (quizType.includes("Multiple Choice")) {
+      if (isMCQ) {
         if (rawContent.startsWith("```json")) {
           rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
         } else if (rawContent.startsWith("```")) {
@@ -182,7 +182,7 @@ ${notes}`;
         const quizQuestions = JSON.parse(rawContent);
         startInteractiveMCQ(quizQuestions, outputDiv);
       } else {
-        // Normal Q&A Worksheet layout (Plain text/HTML view, safe from JSON parsing errors)
+        // Normal Q&A Worksheet layout (Plain text/HTML view)
         outputDiv.innerHTML = `
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
             <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Worksheet & Questions</h3>
