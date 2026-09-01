@@ -35,6 +35,35 @@
             <option value="mcq">Multiple Choice (MCQ)</option>
           </select>
         </div>
+        <!-- FLASHCARDS SECTION -->
+<div class="card" style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 20px;">
+  <h3 style="color: #1f2937; margin-bottom: 8px;">Flashcard Study Mode</h3>
+  <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 15px;">Generate flashcards automatically from your notes or add them manually!</p>
+  
+  <!-- Mode Switcher -->
+  <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+    <button id="mode-auto-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Auto-Generate (AI)</button>
+    <button id="mode-manual-btn" style="background: #e5e7eb; color: #374151; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Manual Entry</button>
+  </div>
+
+  <!-- Auto Section Container -->
+  <div id="flashcard-auto-container">
+    <textarea id="flashcard-notes" placeholder="Paste notes here to generate flashcards..." style="width: 100%; height: 80px; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; margin-bottom: 10px;"></textarea>
+    <button id="generate-flashcards-btn" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">Generate Flashcards</button>
+  </div>
+
+  <!-- Manual Section Container (Hidden by default) -->
+  <div id="flashcard-manual-container" style="display: none;">
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+      <input type="text" id="manual-front" placeholder="Front of card (Question/Term)" style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;">
+      <input type="text" id="manual-back" placeholder="Back of card (Answer/Definition)" style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;">
+    </div>
+    <button id="add-manual-card-btn" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">Add to Deck</button>
+  </div>
+
+  <!-- Flashcard Viewport Area -->
+  <div id="flashcard-display-area" style="margin-top: 20px;"></div>
+</div>
 
         <div class="control-group">
           <label for="num-questions">Number of Questions:</label>

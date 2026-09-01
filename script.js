@@ -312,3 +312,175 @@ function startInteractiveMCQ(questions, container) {
 
   renderQuestion();
 }
+// --- FLASHCARD SYSTEM LOGIC ---
+let flashcardDeck = [];
+let currentCardIndex = 0;
+let isShowingFront = true;
+
+const modeAutoBtn = document.getElementById('mode-auto-btn');
+const modeManualBtn = document.getElementById('mode-manual-btn');
+const autoContainer = document.getElementById('flashcard-auto-container');
+const manualContainer = document.getElementById('flashcard-manual-container');
+
+// Switch between Auto and Manual UI tabs
+if (modeAutoBtn && modeManualBtn) {
+  modeAutoBtn.addEventListener('click', () => {
+    autoContainer.style.display = 'block';
+    manualContainer.style.display = 'none';
+    modeAutoBtn.style.background = '#3b82f6';
+    modeAutoBtn.style.color = 'white';
+    modeManualBtn.style.background = '#e5e7eb';
+    modeManualBtn.style.color = '#374151';
+  });
+
+  modeManualBtn.addEventListener('click', () => {
+    autoContainer.style.display = 'none';
+    manualContainer.style.display = 'block';
+    modeManualBtn.style.background = '#3b82f6';
+    modeManualBtn.style.color = 'white';
+    modeAutoBtn.style.background = '#e5e7eb';
+    modeAutoBtn.style.color = '#374151';
+  });
+}
+
+// Manual Flashcard Adder
+const addManualCardBtn = document.getElementById('add-manual-card-btn');
+if (addManualCardBtn) {
+  addManualCardBtn.addEventListener('click', () => {
+    const frontText = document.getElementById('manual-front').value.trim();
+    const backText = document.getElementById('manual-back').value.trim();
+
+    if (!frontText || !backText) {
+      alert("Please fill in both the front and back of the flashcard!");
+      return;
+    }
+
+    flashcardDeck.push({ front: frontText, back: backText });
+    document.getElementById('manual-front').value = '';
+    document.getElementById('manual-back').value = '';
+    
+    currentCardIndex = flashcardDeck.length - 1;
+    renderFlashcardPlayer();
+  });
+}
+
+// Auto-Generate Flashcards via Groq API
+const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
+if (generateFlashcardsBtn) {
+  generateFlashcardsBtn.addEventListener('click', async () => {
+    const notes = document.getElementById('flashcard-notes').value.trim();
+    const displayArea = document.getElementById('flashcard-display-area');
+
+    if (!notes) {
+      displayArea.innerHTML = "<p style='color: #ef4444; font-size: 0.9rem;'>Please enter some notes to generate flashcards.</p>";
+      return;
+    }
+
+    displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>Generating flashcards with AI...</p>";
+
+    const prompt = `Based on the following text, generate 5 flashcards. 
+You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
+Format:
+[
+  { "front": "Question or term", "back": "Answer or definition" }
+]
+
+Text:
+${notes}`;
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer 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",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-20b",
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      if (data.choices && data.choices.length > 0) {
+        let rawContent = data.choices[0].message.content.trim();
+        if (rawContent.startsWith("```json")) {
+          rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
+        } else if (rawContent.startsWith("```")) {
+          rawContent = rawContent.replace(/^```/, "").replace(/```$/, "").trim();
+        }
+        
+        flashcardDeck = JSON.parse(rawContent);
+        currentCardIndex = 0;
+        isShowingFront = true;
+        renderFlashcardPlayer();
+      } else {
+        displayArea.innerHTML = "<p style='color: #ef4444;'>Failed to generate flashcards. Try again.</p>";
+      }
+    } catch (err) {
+      displayArea.innerHTML = "<p style='color: #ef4444;'>An error occurred during generation.</p>";
+    }
+  });
+}
+
+// Interactive Flashcard Player Renderer
+function renderFlashcardPlayer() {
+  const displayArea = document.getElementById('flashcard-display-area');
+  
+  if (flashcardDeck.length === 0) {
+    displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem; text-align: center;'>No flashcards in the deck yet. Create some above!</p>";
+    return;
+  }
+
+  const card = flashcardDeck[currentCardIndex];
+  const cardText = isShowingFront ? card.front : card.back;
+  const cardLabel = isShowingFront ? "Front (Click card to flip)" : "Back (Click card to flip)";
+  const cardBg = isShowingFront ? "#f8fafc" : "#eff6ff";
+  const cardBorder = isShowingFront ? "#3b82f6" : "#10b981";
+
+  displayArea.innerHTML = `
+    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 6px; text-align: center; font-weight: 600;">
+      Card ${currentCardIndex + 1} of ${flashcardDeck.length}
+    </div>
+    
+    <!-- Flashcard Box -->
+    <div id="card-box" style="background: ${cardBg}; border: 2px solid ${cardBorder}; padding: 30px; border-radius: 8px; text-align: center; min-height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+      <span style="font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px; font-weight: bold;">${cardLabel}</span>
+      <p style="font-size: 1.1rem; color: #1f2937; font-weight: 500; margin: 0;">${cardText}</p>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+      <button id="prev-card" style="background: #6b7280; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">&larr; Previous</button>
+      <button id="flip-card-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Flip Card</button>
+      <button id="next-card" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Next &rarr;</button>
+    </div>
+  `;
+
+  // Flip functionality via card click or flip button
+  const flipAction = () => {
+    isShowingFront = !isShowingFront;
+    renderFlashcardPlayer();
+  };
+
+  document.getElementById('card-box').addEventListener('click', flipAction);
+  document.getElementById('flip-card-btn').addEventListener('click', flipAction);
+
+  // Previous Button
+  document.getElementById('prev-card').addEventListener('click', () => {
+    if (currentCardIndex > 0) {
+      currentCardIndex--;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+    }
+  });
+
+  // Next Button
+  document.getElementById('next-card').addEventListener('click', () => {
+    if (currentCardIndex < flashcardDeck.length - 1) {
+      currentCardIndex++;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+    }
+  });
+}
