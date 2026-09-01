@@ -119,7 +119,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   const numQuestions = document.getElementById('num-questions').value;
   
   const quizTypeEl = document.getElementById('quiz-type');
-  const quizType = quizTypeEl ? quizTypeEl.value.trim() : "Multiple Choice (MCQ)";
+  const quizType = quizTypeEl ? quizTypeEl.value.trim().toLowerCase() : "";
   
   const outputDiv = document.getElementById('quiz-output');
 
@@ -130,10 +130,19 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
   outputDiv.innerHTML = "Generating quickly...";
 
-  let prompt = "";
-  const isMCQ = quizType.includes("Multiple Choice") || quizType.includes("MCQ");
+  // Explicitly check if it's Normal / Q&A mode vs MCQ mode
+  const isNormalQA = quizType.includes("normal") || quizType.includes("q&a");
 
-  if (isMCQ) {
+  let prompt = "";
+
+  if (isNormalQA) {
+    prompt = `Based on the following text, create exactly ${numQuestions} standard study questions without any multiple-choice options. 
+List all the questions first numbered sequentially. 
+Then, provide a separate Answer Key section containing the answers at the very bottom, after all the questions have been listed. Do not place answers directly under each individual question.
+
+Text:
+${notes}`;
+  } else {
     prompt = `Based on the following text, generate exactly ${numQuestions} multiple-choice questions. 
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
@@ -145,13 +154,6 @@ Format:
   }
 ]
 where "correct" is the index (0 to 3) of the correct option in the options array.
-
-Text:
-${notes}`;
-  } else {
-    prompt = `Based on the following text, create exactly ${numQuestions} standard study questions without any multiple-choice options. 
-List all the questions first numbered sequentially. 
-Then, provide a separate Answer Key section containing the answers at the very bottom, after all the questions have been listed. Do not place answers directly under each individual question.
 
 Text:
 ${notes}`;
@@ -175,15 +177,7 @@ ${notes}`;
     if (data.choices && data.choices.length > 0) {
       let rawContent = data.choices[0].message.content.trim();
       
-      if (isMCQ) {
-        if (rawContent.startsWith("```json")) {
-          rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
-        } else if (rawContent.startsWith("```")) {
-          rawContent = rawContent.replace(/^```/, "").replace(/```$/, "").trim();
-        }
-        const quizQuestions = JSON.parse(rawContent);
-        startInteractiveMCQ(quizQuestions, outputDiv);
-      } else {
+      if (isNormalQA) {
         // Normal Q&A Worksheet layout (Plain text view with separated Answer Key at the bottom)
         outputDiv.innerHTML = `
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
@@ -191,6 +185,14 @@ ${notes}`;
             <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
           </div>
         `;
+      } else {
+        if (rawContent.startsWith("```json")) {
+          rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
+        } else if (rawContent.startsWith("```")) {
+          rawContent = rawContent.replace(/^```/, "").replace(/```$/, "").trim();
+        }
+        const quizQuestions = JSON.parse(rawContent);
+        startInteractiveMCQ(quizQuestions, outputDiv);
       }
 
     } else {
