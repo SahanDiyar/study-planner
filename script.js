@@ -118,9 +118,19 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   const notes = document.getElementById('study-notes').value;
   const numQuestions = document.getElementById('num-questions').value;
   
-  const quizTypeEl = document.getElementById('quiz-type');
-  const quizType = quizTypeEl ? quizTypeEl.value.trim().toLowerCase() : "";
-  
+  // Robustly find the quiz type dropdown by scanning all select elements on the page
+  const selects = document.querySelectorAll('select');
+  let quizType = "";
+  selects.forEach(sel => {
+    const val = sel.value.toLowerCase();
+    if (val.includes("normal") || val.includes("q&a") || val.includes("multiple") || val.includes("mcq")) {
+      quizType = val;
+    }
+  });
+  if (!quizType && selects.length > 0) {
+    quizType = selects[0].value.toLowerCase();
+  }
+
   const outputDiv = document.getElementById('quiz-output');
 
   if (!notes.trim()) {
@@ -130,7 +140,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
   outputDiv.innerHTML = "Generating quickly...";
 
-  // Explicitly check if it's Normal / Q&A mode vs MCQ mode
   const isNormalQA = quizType.includes("normal") || quizType.includes("q&a");
 
   let prompt = "";
