@@ -149,7 +149,9 @@ where "correct" is the index (0 to 3) of the correct option in the options array
 Text:
 ${notes}`;
   } else {
-    prompt = `Based on the following text, create a regular study worksheet with questions, fill-in-the-blanks, or short answers. Do NOT format as JSON. Just write out clear questions and put the answers at the very bottom in an Answer Key section.
+    prompt = `Based on the following text, create exactly ${numQuestions} standard study questions without any multiple-choice options. 
+List all the questions first numbered sequentially. 
+Then, provide a separate "Answer Key" section containing the answers at the very bottom, after all the questions have been listed. Do not place answers directly under each individual question.
 
 Text:
 ${notes}`;
@@ -163,7 +165,7 @@ ${notes}`;
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-20b",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }]
       })
     });
@@ -182,10 +184,10 @@ ${notes}`;
         const quizQuestions = JSON.parse(rawContent);
         startInteractiveMCQ(quizQuestions, outputDiv);
       } else {
-        // Normal Q&A Worksheet layout (Plain text/HTML view)
+        // Normal Q&A Worksheet layout (Plain text view with separated Answer Key at the bottom)
         outputDiv.innerHTML = `
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
-            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Worksheet & Questions</h3>
+            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📝 Study Questions & Worksheet</h3>
             <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
           </div>
         `;
@@ -250,52 +252,4 @@ function startInteractiveMCQ(questions, container) {
         btn.style.background = '#eff6ff';
         btn.style.borderColor = '#3b82f6';
         selectedOptionIndex = idx;
-        document.getElementById('submit-ans').disabled = false;
-      });
-
-      optionsContainer.appendChild(btn);
-    });
-
-    document.getElementById('submit-ans').addEventListener('click', () => {
-      if (selectedOptionIndex === null) return;
-
-      const submitBtn = document.getElementById('submit-ans');
-      const feedback = document.getElementById('feedback');
-      submitBtn.disabled = true;
-
-      const optionButtons = Array.from(optionsContainer.children);
-      optionButtons.forEach(b => b.style.pointerEvents = 'none');
-
-      if (selectedOptionIndex === q.correct) {
-        optionButtons[selectedOptionIndex].style.background = '#d1fae5';
-        optionButtons[selectedOptionIndex].style.borderColor = '#10b981';
-        feedback.style.color = '#059669';
-        feedback.innerText = "Correct! Great job!";
-        score++;
-      } else {
-        optionButtons[selectedOptionIndex].style.background = '#fee2e2';
-        optionButtons[selectedOptionIndex].style.borderColor = '#ef4444';
-        optionButtons[q.correct].style.background = '#d1fae5';
-        optionButtons[q.correct].style.borderColor = '#10b981';
-        feedback.style.color = '#dc2626';
-        feedback.innerText = "Incorrect.";
-      }
-
-      submitBtn.style.display = 'none';
-
-      const nextBtn = document.createElement('button');
-      nextBtn.innerText = currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question ➔';
-      nextBtn.style.cssText = `
-        margin-top: 12px; background: #3b82f6; color: white; border: none; 
-        padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
-      `;
-      nextBtn.addEventListener('click', () => {
-        currentIndex++;
-        renderQuestion();
-      });
-      container.appendChild(nextBtn);
-    });
-  }
-
-  renderQuestion();
-}
+        document.getElementById('submit-ans
