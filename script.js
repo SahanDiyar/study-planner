@@ -1,3 +1,25 @@
+// --- PERSISTENT ANALYTICS & WEEKLY TRACKER STATE ---
+let userStats = JSON.parse(localStorage.getItem('studyPlannerStats')) || {
+  completedTasks: 0,
+  flashcardsReviewed: 0,
+  quizScores: [],
+  history: {} // Format: { "YYYY-MM-DD": { tasks: 0, flashcards: 0, quizzes: 0 } }
+};
+
+function getTodayKey() {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+}
+
+function recordActivity(type, amount = 1) {
+  const todayKey = getTodayKey();
+  if (!userStats.history[todayKey]) {
+    userStats.history[todayKey] = { tasks: 0, flashcards: 0, quizzes: 0 };
+  }
+  userStats.history[todayKey][type] += amount;
+  localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
+}
+
 // --- TASK MANAGER LOGIC ---
 document.getElementById('add-task-btn').addEventListener('click', () => {
   const taskInput = document.getElementById('task-input');
@@ -42,6 +64,7 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
     if (checkbox.checked) {
       span.style.textDecoration = 'line-through';
       span.style.color = '#9ca3af';
+      recordActivity('tasks', 1);
     } else {
       span.style.textDecoration = 'none';
       span.style.color = '#1f2937';
@@ -195,8 +218,8 @@ ${notes}`;
             <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
           </div>
         `;
-        // Track normal worksheet generation as a 100% completion quiz score for analytics
         userStats.quizScores.push(100);
+        recordActivity('quizzes', 1);
         updateAnalyticsDisplay();
       } else {
         if (rawContent.startsWith("```json")) {
@@ -225,6 +248,7 @@ function startInteractiveMCQ(questions, container) {
     if (currentIndex >= questions.length) {
       const percentage = Math.round((score / questions.length) * 100);
       userStats.quizScores.push(percentage);
+      recordActivity('quizzes', 1);
       updateAnalyticsDisplay();
 
       container.innerHTML = `
@@ -463,6 +487,7 @@ function renderFlashcardPlayer() {
   const flipAction = () => {
     isShowingFront = !isShowingFront;
     userStats.flashcardsReviewed++;
+    recordActivity('flashcards', 1);
     updateAnalyticsDisplay();
     renderFlashcardPlayer();
   };
@@ -488,12 +513,6 @@ function renderFlashcardPlayer() {
 }
 
 // --- ANALYTICS TRACKER SYSTEM ---
-let userStats = {
-  completedTasks: 0,
-  flashcardsReviewed: 0,
-  quizScores: []
-};
-
 function updateAnalyticsDisplay() {
   // Automatically count how many task checkboxes are currently checked
   const checkboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -503,7 +522,25 @@ function updateAnalyticsDisplay() {
   });
   userStats.completedTasks = checkedCount;
 
-  // Update DOM elements
+  // Calculate stats for the past 7 days from history
+  let weeklyTasks = 0;
+  let weeklyFlashcards = 0;
+  let weeklyQuizzes = 0;
+
+  const now = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    const dateKey = d.toISOString().split('T')[0];
+    
+    if (userStats.history[dateKey]) {
+      weeklyTasks += userStats.history[dateKey].tasks || 0;
+      weeklyFlashcards += userStats.history[dateKey].flashcards || 0;
+      weeklyQuizzes += userStats.history[dateKey].quizzes || 0;
+    }
+  }
+
+  // Update Daily DOM Elements
   const taskEl = document.getElementById('stat-completed-tasks');
   const flashcardEl = document.getElementById('stat-flashcards-reviewed');
   const quizEl = document.getElementById('stat-avg-quiz');
@@ -520,6 +557,17 @@ function updateAnalyticsDisplay() {
       quizEl.textContent = '0%';
     }
   }
+
+  // Update Weekly DOM Elements
+  const weeklyTaskEl = document.getElementById('stat-weekly-tasks');
+  const weeklyFlashcardEl = document.getElementById('stat-weekly-flashcards');
+  const weeklyQuizEl = document.getElementById('stat-weekly-quizzes');
+
+  if (weeklyTaskEl) weeklyTaskEl.textContent = weeklyTasks;
+  if (weeklyFlashcardEl) weeklyFlashcardEl.textContent = weeklyFlashcards;
+  if (weeklyQuizEl) weeklyQuizEl.textContent = weeklyQuizzes;
+
+  localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
 }
 
 // Run on page load
