@@ -484,3 +484,37 @@ function renderFlashcardPlayer() {
     }
   });
 }
+// Analytics Tracker State
+let userStats = {
+  completedTasks: 0,
+  flashcardsReviewed: 0,
+  quizScores: []
+};
+
+// Function to update the UI elements on the dashboard
+function updateAnalyticsDisplay() {
+  const taskEl = document.getElementById('stat-completed-tasks');
+  const flashcardEl = document.getElementById('stat-flashcards-reviewed');
+  const quizEl = document.getElementById('stat-avg-quiz');
+
+  if (taskEl) taskEl.textContent = userStats.completedTasks;
+  if (flashcardEl) flashcardEl.textContent = userStats.flashcardsReviewed;
+
+  if (quizEl) {
+    if (userStats.quizScores.length > 0) {
+      const sum = userStats.quizScores.reduce((a, b) => a + b, 0);
+      const avg = Math.round(sum / userStats.quizScores.length);
+      quizEl.textContent = avg + '%';
+    } else {
+      quizEl.textContent = '0%';
+    }
+  }
+}
+
+// Hook these functions into your existing app events:
+// 1. Call `userStats.completedTasks++; updateAnalyticsDisplay();` whenever a task is checked/completed.
+// 2. Call `userStats.flashcardsReviewed++; updateAnalyticsDisplay();` whenever a flashcard is flipped or navigated.
+// 3. Call `userStats.quizScores.push(scorePercentage); updateAnalyticsDisplay();` whenever a quiz is completed.
+
+// Run once on load to initialize numbers
+updateAnalyticsDisplay();
