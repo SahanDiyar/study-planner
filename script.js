@@ -1,4 +1,4 @@
-// --- PERSISTENT ANALYTICS & WEEKLY TRACKER STATE ---
+// --- PERSISTENT ANALYTICS & REPORTING STATE ---
 let userStats = JSON.parse(localStorage.getItem('studyPlannerStats')) || {
   completedTasks: 0,
   flashcardsReviewed: 0,
@@ -522,21 +522,27 @@ function updateAnalyticsDisplay() {
   });
   userStats.completedTasks = checkedCount;
 
-  // Calculate stats for the past 7 days from history
-  let weeklyTasks = 0;
-  let weeklyFlashcards = 0;
-  let weeklyQuizzes = 0;
+  // Calculate stats for the past 7 days and past 30 days from history
+  let weeklyTasks = 0, weeklyFlashcards = 0, weeklyQuizzes = 0;
+  let monthlyTasks = 0, monthlyFlashcards = 0, monthlyQuizzes = 0;
 
   const now = new Date();
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 30; i++) {
     const d = new Date();
     d.setDate(now.getDate() - i);
     const dateKey = d.toISOString().split('T')[0];
     
     if (userStats.history[dateKey]) {
-      weeklyTasks += userStats.history[dateKey].tasks || 0;
-      weeklyFlashcards += userStats.history[dateKey].flashcards || 0;
-      weeklyQuizzes += userStats.history[dateKey].quizzes || 0;
+      // If within the last 7 days
+      if (i < 7) {
+        weeklyTasks += userStats.history[dateKey].tasks || 0;
+        weeklyFlashcards += userStats.history[dateKey].flashcards || 0;
+        weeklyQuizzes += userStats.history[dateKey].quizzes || 0;
+      }
+      // Within the last 30 days
+      monthlyTasks += userStats.history[dateKey].tasks || 0;
+      monthlyFlashcards += userStats.history[dateKey].flashcards || 0;
+      monthlyQuizzes += userStats.history[dateKey].quizzes || 0;
     }
   }
 
@@ -566,6 +572,15 @@ function updateAnalyticsDisplay() {
   if (weeklyTaskEl) weeklyTaskEl.textContent = weeklyTasks;
   if (weeklyFlashcardEl) weeklyFlashcardEl.textContent = weeklyFlashcards;
   if (weeklyQuizEl) weeklyQuizEl.textContent = weeklyQuizzes;
+
+  // Update Monthly DOM Elements
+  const monthlyTaskEl = document.getElementById('stat-monthly-tasks');
+  const monthlyFlashcardEl = document.getElementById('stat-monthly-flashcards');
+  const monthlyQuizEl = document.getElementById('stat-monthly-quizzes');
+
+  if (monthlyTaskEl) monthlyTaskEl.textContent = monthlyTasks;
+  if (monthlyFlashcardEl) monthlyFlashcardEl.textContent = monthlyFlashcards;
+  if (monthlyQuizEl) monthlyQuizEl.textContent = monthlyQuizzes;
 
   localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
 }
