@@ -37,6 +37,7 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
 
   const checkbox = li.querySelector('input[type="checkbox"]');
   const span = li.querySelector('span');
+  
   checkbox.addEventListener('change', () => {
     if (checkbox.checked) {
       span.style.textDecoration = 'line-through';
@@ -45,14 +46,17 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
       span.style.textDecoration = 'none';
       span.style.color = '#1f2937';
     }
+    updateAnalyticsDisplay();
   });
 
   li.querySelector('button').addEventListener('click', () => {
     li.remove();
+    updateAnalyticsDisplay();
   });
 
   taskList.appendChild(li);
   taskInput.value = "";
+  updateAnalyticsDisplay();
 });
 
 // --- SUNDAY - THURSDAY SCHEDULE WITH LOCALSTORAGE SAVING ---
@@ -118,7 +122,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   const notes = document.getElementById('study-notes').value;
   const numQuestions = document.getElementById('num-questions').value;
   
-  // Robustly find the quiz type dropdown by scanning all select elements on the page
   const selects = document.querySelectorAll('select');
   let quizType = "";
   selects.forEach(sel => {
@@ -141,7 +144,6 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   outputDiv.innerHTML = "Generating quickly...";
 
   const isNormalQA = quizType.includes("normal") || quizType.includes("q&a");
-
   let prompt = "";
 
   if (isNormalQA) {
@@ -187,13 +189,15 @@ ${notes}`;
       let rawContent = data.choices[0].message.content.trim();
       
       if (isNormalQA) {
-        // Normal Q&A Worksheet layout (Plain text view with separated Answer Key at the bottom)
         outputDiv.innerHTML = `
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
             <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">Study Questions & Worksheet</h3>
             <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
           </div>
         `;
+        // Track normal worksheet generation as a 100% completion quiz score for analytics
+        userStats.quizScores.push(100);
+        updateAnalyticsDisplay();
       } else {
         if (rawContent.startsWith("```json")) {
           rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
@@ -219,10 +223,14 @@ function startInteractiveMCQ(questions, container) {
 
   function renderQuestion() {
     if (currentIndex >= questions.length) {
+      const percentage = Math.round((score / questions.length) * 100);
+      userStats.quizScores.push(percentage);
+      updateAnalyticsDisplay();
+
       container.innerHTML = `
         <div style="text-align: center; padding: 20px;">
           <h3 style="color: #1f2937; margin-bottom: 10px;">Quiz Completed!</h3>
-          <p style="font-size: 1.1rem; color: #4b5563;">Your Score: <strong>${score} / ${questions.length}</strong></p>
+          <p style="font-size: 1.1rem; color: #4b5563;">Your Score: <strong>${score} / ${questions.length} (${percentage}%)</strong></p>
           <button id="restart-quiz" style="margin-top: 15px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Retake Quiz</button>
         </div>
       `;
@@ -312,6 +320,7 @@ function startInteractiveMCQ(questions, container) {
 
   renderQuestion();
 }
+
 // --- FLASHCARD SYSTEM LOGIC ---
 let flashcardDeck = [];
 let currentCardIndex = 0;
@@ -322,7 +331,6 @@ const modeManualBtn = document.getElementById('mode-manual-btn');
 const autoContainer = document.getElementById('flashcard-auto-container');
 const manualContainer = document.getElementById('flashcard-manual-container');
 
-// Switch between Auto and Manual UI tabs
 if (modeAutoBtn && modeManualBtn) {
   modeAutoBtn.addEventListener('click', () => {
     autoContainer.style.display = 'block';
@@ -343,7 +351,6 @@ if (modeAutoBtn && modeManualBtn) {
   });
 }
 
-// Manual Flashcard Adder
 const addManualCardBtn = document.getElementById('add-manual-card-btn');
 if (addManualCardBtn) {
   addManualCardBtn.addEventListener('click', () => {
@@ -364,7 +371,6 @@ if (addManualCardBtn) {
   });
 }
 
-// Auto-Generate Flashcards via Groq API
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
@@ -423,7 +429,6 @@ ${notes}`;
   });
 }
 
-// Interactive Flashcard Player Renderer
 function renderFlashcardPlayer() {
   const displayArea = document.getElementById('flashcard-display-area');
   
@@ -443,13 +448,11 @@ function renderFlashcardPlayer() {
       Card ${currentCardIndex + 1} of ${flashcardDeck.length}
     </div>
     
-    <!-- Flashcard Box -->
     <div id="card-box" style="background: ${cardBg}; border: 2px solid ${cardBorder}; padding: 30px; border-radius: 8px; text-align: center; min-height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
       <span style="font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px; font-weight: bold;">${cardLabel}</span>
       <p style="font-size: 1.1rem; color: #1f2937; font-weight: 500; margin: 0;">${cardText}</p>
     </div>
 
-    <!-- Navigation Controls -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
       <button id="prev-card" style="background: #6b7280; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">&larr; Previous</button>
       <button id="flip-card-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Flip Card</button>
@@ -457,16 +460,16 @@ function renderFlashcardPlayer() {
     </div>
   `;
 
-  // Flip functionality via card click or flip button
   const flipAction = () => {
     isShowingFront = !isShowingFront;
+    userStats.flashcardsReviewed++;
+    updateAnalyticsDisplay();
     renderFlashcardPlayer();
   };
 
   document.getElementById('card-box').addEventListener('click', flipAction);
   document.getElementById('flip-card-btn').addEventListener('click', flipAction);
 
-  // Previous Button
   document.getElementById('prev-card').addEventListener('click', () => {
     if (currentCardIndex > 0) {
       currentCardIndex--;
@@ -475,7 +478,6 @@ function renderFlashcardPlayer() {
     }
   });
 
-  // Next Button
   document.getElementById('next-card').addEventListener('click', () => {
     if (currentCardIndex < flashcardDeck.length - 1) {
       currentCardIndex++;
@@ -484,41 +486,8 @@ function renderFlashcardPlayer() {
     }
   });
 }
-// Analytics Tracker State
-let userStats = {
-  completedTasks: 0,
-  flashcardsReviewed: 0,
-  quizScores: []
-};
 
-// Function to update the UI elements on the dashboard
-function updateAnalyticsDisplay() {
-  const taskEl = document.getElementById('stat-completed-tasks');
-  const flashcardEl = document.getElementById('stat-flashcards-reviewed');
-  const quizEl = document.getElementById('stat-avg-quiz');
-
-  if (taskEl) taskEl.textContent = userStats.completedTasks;
-  if (flashcardEl) flashcardEl.textContent = userStats.flashcardsReviewed;
-
-  if (quizEl) {
-    if (userStats.quizScores.length > 0) {
-      const sum = userStats.quizScores.reduce((a, b) => a + b, 0);
-      const avg = Math.round(sum / userStats.quizScores.length);
-      quizEl.textContent = avg + '%';
-    } else {
-      quizEl.textContent = '0%';
-    }
-  }
-}
-
-// Hook these functions into your existing app events:
-// 1. Call `userStats.completedTasks++; updateAnalyticsDisplay();` whenever a task is checked/completed.
-// 2. Call `userStats.flashcardsReviewed++; updateAnalyticsDisplay();` whenever a flashcard is flipped or navigated.
-// 3. Call `userStats.quizScores.push(scorePercentage); updateAnalyticsDisplay();` whenever a quiz is completed.
-
-// Run once on load to initialize numbers
-updateAnalyticsDisplay();
-// Analytics State
+// --- ANALYTICS TRACKER SYSTEM ---
 let userStats = {
   completedTasks: 0,
   flashcardsReviewed: 0,
@@ -526,7 +495,7 @@ let userStats = {
 };
 
 function updateAnalyticsDisplay() {
-  // Automatically count how many task checkboxes are currently checked on the page
+  // Automatically count how many task checkboxes are currently checked
   const checkboxes = document.querySelectorAll('input[type="checkbox"]');
   let checkedCount = 0;
   checkboxes.forEach(box => {
@@ -552,13 +521,6 @@ function updateAnalyticsDisplay() {
     }
   }
 }
-
-// Listen for any changes on the page (like checking off your Arabic task) to recalculate instantly
-document.addEventListener('change', (e) => {
-  if (e.target.matches('input[type="checkbox"]')) {
-    updateAnalyticsDisplay();
-  }
-});
 
 // Run on page load
 updateAnalyticsDisplay();
