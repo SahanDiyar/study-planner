@@ -20,7 +20,84 @@ function recordActivity(type, amount = 1) {
   localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
 }
 
-// --- TASK MANAGER LOGIC ---
+// --- TASK MANAGER LOGIC WITH LOCALSTORAGE ---
+let savedTasks = JSON.parse(localStorage.getItem('studyPlannerTasks')) || [];
+
+function saveTasksToStorage() {
+  const taskList = document.getElementById('task-list');
+  if (!taskList) return;
+  
+  const tasks = [];
+  taskList.querySelectorAll('li').forEach(li => {
+    const text = li.querySelector('span').innerText;
+    const completed = li.querySelector('input[type="checkbox"]').checked;
+    tasks.push({ text, completed });
+  });
+  localStorage.setItem('studyPlannerTasks', JSON.stringify(tasks));
+}
+
+function renderSavedTasks() {
+  if (savedTasks.length === 0) return;
+
+  let taskList = document.getElementById('task-list');
+  if (!taskList) {
+    taskList = document.createElement('ul');
+    taskList.id = 'task-list';
+    taskList.style.listStyle = 'none';
+    taskList.style.marginTop = '15px';
+    document.querySelector('.task-input-section').after(taskList);
+  }
+
+  savedTasks.forEach(taskObj => {
+    const li = document.createElement('li');
+    li.style.display = 'flex';
+    li.style.justifyContent = 'space-between';
+    li.style.alignItems = 'center';
+    li.style.padding = '8px 12px';
+    li.style.background = '#f9fafb';
+    li.style.border = '1px solid #e5e7eb';
+    li.style.borderRadius = '6px';
+    li.style.marginBottom = '8px';
+
+    li.innerHTML = `
+      <span style="font-size: 0.95rem; color: ${taskObj.completed ? '#9ca3af' : '#1f2937'}; text-decoration: ${taskObj.completed ? 'line-through' : 'none'};">${taskObj.text}</span>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" ${taskObj.completed ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;" title="Mark as complete">
+        <button style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delete</button>
+      </div>
+    `;
+
+    const checkbox = li.querySelector('input[type="checkbox"]');
+    const span = li.querySelector('span');
+    
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        span.style.textDecoration = 'line-through';
+        span.style.color = '#9ca3af';
+        recordActivity('tasks', 1);
+      } else {
+        span.style.textDecoration = 'none';
+        span.style.color = '#1f2937';
+        // Note: Unchecking decreases today's recorded task count safely
+        const todayKey = getTodayKey();
+        if (userStats.history[todayKey] && userStats.history[todayKey].tasks > 0) {
+          userStats.history[todayKey].tasks -= 1;
+        }
+      }
+      saveTasksToStorage();
+      updateAnalyticsDisplay();
+    });
+
+    li.querySelector('button').addEventListener('click', () => {
+      li.remove();
+      saveTasksToStorage();
+      updateAnalyticsDisplay();
+    });
+
+    taskList.appendChild(li);
+  });
+}
+
 document.getElementById('add-task-btn').addEventListener('click', () => {
   const taskInput = document.getElementById('task-input');
   const taskText = taskInput.value.trim();
@@ -68,17 +145,24 @@ document.getElementById('add-task-btn').addEventListener('click', () => {
     } else {
       span.style.textDecoration = 'none';
       span.style.color = '#1f2937';
+      const todayKey = getTodayKey();
+      if (userStats.history[todayKey] && userStats.history[todayKey].tasks > 0) {
+        userStats.history[todayKey].tasks -= 1;
+      }
     }
+    saveTasksToStorage();
     updateAnalyticsDisplay();
   });
 
   li.querySelector('button').addEventListener('click', () => {
     li.remove();
+    saveTasksToStorage();
     updateAnalyticsDisplay();
   });
 
   taskList.appendChild(li);
   taskInput.value = "";
+  saveTasksToStorage();
   updateAnalyticsDisplay();
 });
 
@@ -514,7 +598,6 @@ function renderFlashcardPlayer() {
 
 // --- ANALYTICS TRACKER SYSTEM ---
 function updateAnalyticsDisplay() {
-  // Automatically count how many task checkboxes are currently checked
   const checkboxes = document.querySelectorAll('input[type="checkbox"]');
   let checkedCount = 0;
   checkboxes.forEach(box => {
@@ -522,7 +605,6 @@ function updateAnalyticsDisplay() {
   });
   userStats.completedTasks = checkedCount;
 
-  // Calculate stats for the past 7 days and past 30 days from history
   let weeklyTasks = 0, weeklyFlashcards = 0, weeklyQuizzes = 0;
   let monthlyTasks = 0, monthlyFlashcards = 0, monthlyQuizzes = 0;
 
@@ -533,20 +615,17 @@ function updateAnalyticsDisplay() {
     const dateKey = d.toISOString().split('T')[0];
     
     if (userStats.history[dateKey]) {
-      // If within the last 7 days
       if (i < 7) {
         weeklyTasks += userStats.history[dateKey].tasks || 0;
         weeklyFlashcards += userStats.history[dateKey].flashcards || 0;
         weeklyQuizzes += userStats.history[dateKey].quizzes || 0;
       }
-      // Within the last 30 days
       monthlyTasks += userStats.history[dateKey].tasks || 0;
       monthlyFlashcards += userStats.history[dateKey].flashcards || 0;
       monthlyQuizzes += userStats.history[dateKey].quizzes || 0;
     }
   }
 
-  // Update Daily DOM Elements
   const taskEl = document.getElementById('stat-completed-tasks');
   const flashcardEl = document.getElementById('stat-flashcards-reviewed');
   const quizEl = document.getElementById('stat-avg-quiz');
@@ -564,7 +643,6 @@ function updateAnalyticsDisplay() {
     }
   }
 
-  // Update Weekly DOM Elements
   const weeklyTaskEl = document.getElementById('stat-weekly-tasks');
   const weeklyFlashcardEl = document.getElementById('stat-weekly-flashcards');
   const weeklyQuizEl = document.getElementById('stat-weekly-quizzes');
@@ -573,7 +651,6 @@ function updateAnalyticsDisplay() {
   if (weeklyFlashcardEl) weeklyFlashcardEl.textContent = weeklyFlashcards;
   if (weeklyQuizEl) weeklyQuizEl.textContent = weeklyQuizzes;
 
-  // Update Monthly DOM Elements
   const monthlyTaskEl = document.getElementById('stat-monthly-tasks');
   const monthlyFlashcardEl = document.getElementById('stat-monthly-flashcards');
   const monthlyQuizEl = document.getElementById('stat-monthly-quizzes');
@@ -585,5 +662,6 @@ function updateAnalyticsDisplay() {
   localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
 }
 
-// Run on page load
+// Initial Load on startup
+renderSavedTasks();
 updateAnalyticsDisplay();
