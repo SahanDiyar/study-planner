@@ -518,3 +518,47 @@ function updateAnalyticsDisplay() {
 
 // Run once on load to initialize numbers
 updateAnalyticsDisplay();
+// Analytics State
+let userStats = {
+  completedTasks: 0,
+  flashcardsReviewed: 0,
+  quizScores: []
+};
+
+function updateAnalyticsDisplay() {
+  // Automatically count how many task checkboxes are currently checked on the page
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  let checkedCount = 0;
+  checkboxes.forEach(box => {
+    if (box.checked) checkedCount++;
+  });
+  userStats.completedTasks = checkedCount;
+
+  // Update DOM elements
+  const taskEl = document.getElementById('stat-completed-tasks');
+  const flashcardEl = document.getElementById('stat-flashcards-reviewed');
+  const quizEl = document.getElementById('stat-avg-quiz');
+
+  if (taskEl) taskEl.textContent = userStats.completedTasks;
+  if (flashcardEl) flashcardEl.textContent = userStats.flashcardsReviewed;
+
+  if (quizEl) {
+    if (userStats.quizScores.length > 0) {
+      const sum = userStats.quizScores.reduce((a, b) => a + b, 0);
+      const avg = Math.round(sum / userStats.quizScores.length);
+      quizEl.textContent = avg + '%';
+    } else {
+      quizEl.textContent = '0%';
+    }
+  }
+}
+
+// Listen for any changes on the page (like checking off your Arabic task) to recalculate instantly
+document.addEventListener('change', (e) => {
+  if (e.target.matches('input[type="checkbox"]')) {
+    updateAnalyticsDisplay();
+  }
+});
+
+// Run on page load
+updateAnalyticsDisplay();
