@@ -328,7 +328,7 @@ ${notes}`;
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "gemma2-9b-it",
             messages: [{ role: "user", content: prompt }]
           })
         });
@@ -790,7 +790,7 @@ ${notes}`;
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "llama-3.1-8b-instant",
+            model: "gemma2-9b-it",
             messages: [{ role: "user", content: prompt }]
           })
         });
