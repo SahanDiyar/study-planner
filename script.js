@@ -783,14 +783,14 @@ Text:
 ${notes}`;
 
       try {
-        const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${GROQ_API_KEY}`,
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "openai/gpt-oss-20b",
+            model: "llama-3.1-8b-instant",
             messages: [{ role: "user", content: prompt }]
           })
         });
@@ -816,15 +816,12 @@ ${notes}`;
           isShowingFront = true;
           renderFlashcardPlayer();
         } else {
-          displayArea.innerHTML = "AI Error generating flashcards.";
+          displayArea.innerHTML = "AI Error: " + (data.error?.message || "Error generating flashcards.");
         }
       } catch (err) {
-        displayArea.innerHTML = "Error generating flashcards. Please try again.";
+        displayArea.innerHTML = "Error parsing flashcards. Please try clicking generate again.";
       }
     });
   }
 
-  // Initial load execution on startup
-  renderSavedTasks();
-  updateAnalyticsDisplay();
-});
+     
