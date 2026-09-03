@@ -522,3 +522,309 @@ ${notes}`;
             document.getElementById('matching-feedback').style.color = '#059669';
             document.getElementById('matching-feedback').innerText = "Awesome! All pairs matched correctly!";
           }
+        } else {
+          selectedTermEl.style.background = '#fee2e2';
+          selectedTermEl.style.borderColor = '#ef4444';
+          setTimeout(() => {
+            selectedTermEl.style.background = 'white';
+            selectedTermEl.style.borderColor = '#d1d5db';
+            selectedTermEl = null;
+            selectedTermPair = null;
+          }, 600);
+        }
+      });
+      defsCol.appendChild(btn);
+    });
+  }
+
+  // --- MCQ INTERACTIVE FLOW ---
+  function startInteractiveMCQ(questions, container) {
+    let currentIndex = 0;
+    let score = 0;
+
+    function renderQuestion() {
+      if (currentIndex >= questions.length) {
+        const percentage = Math.round((score / questions.length) * 100);
+        userStats.quizScores.push(percentage);
+        recordActivity('quizzes', 1);
+        updateAnalyticsDisplay();
+
+        container.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+            <h3 style="color: #1f2937; margin-bottom: 10px;">Quiz Completed!</h3>
+            <p style="font-size: 1.1rem; color: #4b5563;">Your Score: <strong>${score} / ${questions.length} (${percentage}%)</strong></p>
+            <button id="restart-quiz" style="margin-top: 15px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Retake Quiz</button>
+          </div>
+        `;
+        document.getElementById('restart-quiz').addEventListener('click', () => {
+          currentIndex = 0;
+          score = 0;
+          renderQuestion();
+        });
+        return;
+      }
+
+      const q = questions[currentIndex];
+      
+      container.innerHTML = `
+        <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Question ${currentIndex + 1} of ${questions.length}</div>
+        <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 1rem; color: #1f2937; font-weight: 500;">${q.question}</div>
+        <div id="options-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;"></div>
+        <button id="submit-ans" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;" disabled>Submit Answer</button>
+        <div id="feedback" style="margin-top: 10px; font-weight: bold; font-size: 0.9rem;"></div>
+      `;
+
+      const optionsContainer = document.getElementById('options-container');
+      let selectedOptionIndex = null;
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.innerText = opt;
+        btn.style.cssText = `
+          text-align: left; padding: 10px 14px; background: white; border: 1.5px solid #d1d5db; 
+          border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #374151; transition: all 0.2s;
+        `;
+        
+        btn.addEventListener('click', () => {
+          Array.from(optionsContainer.children).forEach(b => {
+            b.style.background = 'white';
+            b.style.borderColor = '#d1d5db';
+          });
+          btn.style.background = '#eff6ff';
+          btn.style.borderColor = '#3b82f6';
+          selectedOptionIndex = idx;
+          document.getElementById('submit-ans').disabled = false;
+        });
+
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('submit-ans').addEventListener('click', () => {
+        if (selectedOptionIndex === null) return;
+
+        const submitBtn = document.getElementById('submit-ans');
+        const feedback = document.getElementById('feedback');
+        submitBtn.disabled = true;
+
+        const optionButtons = Array.from(optionsContainer.children);
+        optionButtons.forEach(b => b.style.pointerEvents = 'none');
+
+        if (selectedOptionIndex === q.correct) {
+          optionButtons[selectedOptionIndex].style.background = '#d1fae5';
+          optionButtons[selectedOptionIndex].style.borderColor = '#10b981';
+          feedback.style.color = '#059669';
+          feedback.innerText = "Correct! Great job!";
+          score++;
+        } else {
+          optionButtons[selectedOptionIndex].style.background = '#fee2e2';
+          optionButtons[selectedOptionIndex].style.borderColor = '#ef4444';
+          optionButtons[q.correct].style.background = '#d1fae5';
+          optionButtons[q.correct].style.borderColor = '#10b981';
+          feedback.style.color = '#dc2626';
+          feedback.innerText = "Incorrect.";
+        }
+
+        submitBtn.style.display = 'none';
+
+        const nextBtn = document.createElement('button');
+        nextBtn.innerText = currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question ->';
+        nextBtn.style.cssText = `
+          margin-top: 12px; background: #3b82f6; color: white; border: none; 
+          padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
+        `;
+        nextBtn.addEventListener('click', () => {
+          currentIndex++;
+          renderQuestion();
+        });
+        container.appendChild(nextBtn);
+      });
+    }
+
+    renderQuestion();
+  }
+
+  // --- FLASHCARD SYSTEM LOGIC ---
+  let flashcardDeck = [];
+  let currentCardIndex = 0;
+  let isShowingFront = true;
+
+  const modeAutoBtn = document.getElementById('mode-auto-btn');
+  const modeManualBtn = document.getElementById('mode-manual-btn');
+  const autoContainer = document.getElementById('flashcard-auto-container');
+  const manualContainer = document.getElementById('flashcard-manual-container');
+
+  if (modeAutoBtn && modeManualBtn) {
+    modeAutoBtn.addEventListener('click', () => {
+      autoContainer.style.display = 'block';
+      manualContainer.style.display = 'none';
+      modeAutoBtn.style.background = '#3b82f6';
+      modeAutoBtn.style.color = 'white';
+      modeManualBtn.style.background = '#e5e7eb';
+      modeManualBtn.style.color = '#374151';
+    });
+
+    modeManualBtn.addEventListener('click', () => {
+      autoContainer.style.display = 'none';
+      manualContainer.style.display = 'block';
+      modeManualBtn.style.background = '#3b82f6';
+      modeManualBtn.style.color = 'white';
+      modeAutoBtn.style.background = '#e5e7eb';
+      modeAutoBtn.style.color = '#374151';
+    });
+  }
+
+  function renderFlashcardPlayer() {
+    const displayArea = document.getElementById('flashcard-display-area');
+    if (!displayArea) return;
+
+    if (flashcardDeck.length === 0) {
+      displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>No flashcards in the deck yet. Generate or create some above!</p>";
+      return;
+    }
+
+    const currentCard = flashcardDeck[currentCardIndex];
+
+    displayArea.innerHTML = `
+      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
+        <div style="font-size: 1.1rem; color: #1e293b; margin: 15px 0; font-weight: 500;">
+          ${isShowingFront ? currentCard.front : currentCard.back}
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8;">(Click card to flip)</div>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+        <button id="prev-card-btn" style="background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Previous</button>
+        <button id="flip-card-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Flip Card</button>
+        <button id="next-card-btn" style="background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Next</button>
+      </div>
+    `;
+
+    displayArea.querySelector('div').addEventListener('click', () => {
+      isShowingFront = !isShowingFront;
+      renderFlashcardPlayer();
+    });
+
+    document.getElementById('flip-card-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      isShowingFront = !isShowingFront;
+      renderFlashcardPlayer();
+    });
+
+    document.getElementById('prev-card-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentCardIndex > 0) {
+        currentCardIndex--;
+        isShowingFront = true;
+        renderFlashcardPlayer();
+      }
+    });
+
+    document.getElementById('next-card-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentCardIndex < flashcardDeck.length - 1) {
+        currentCardIndex++;
+        isShowingFront = true;
+        renderFlashcardPlayer();
+        recordActivity('flashcards', 1);
+        updateAnalyticsDisplay();
+      }
+    });
+  }
+
+  const addManualCardBtn = document.getElementById('add-manual-card-btn');
+  if (addManualCardBtn) {
+    addManualCardBtn.addEventListener('click', () => {
+      const frontInput = document.getElementById('manual-front');
+      const backInput = document.getElementById('manual-back');
+      if (!frontInput || !backInput) return;
+      
+      const frontText = frontInput.value.trim();
+      const backText = backInput.value.trim();
+
+      if (!frontText || !backText) {
+        alert("Please fill in both the front and back of the flashcard!");
+        return;
+      }
+
+      flashcardDeck.push({ front: frontText, back: backText });
+      frontInput.value = '';
+      backInput.value = '';
+      
+      currentCardIndex = flashcardDeck.length - 1;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+    });
+  }
+
+  const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
+  if (generateFlashcardsBtn) {
+    generateFlashcardsBtn.addEventListener('click', async () => {
+      const notesEl = document.getElementById('flashcard-notes');
+      const displayArea = document.getElementById('flashcard-display-area');
+
+      if (!notesEl || !displayArea) return;
+      const notes = notesEl.value.trim();
+
+      if (!notes) {
+        displayArea.innerHTML = "<p style='color: #ef4444; font-size: 0.9rem;'>Please enter some notes to generate flashcards.</p>";
+        return;
+      }
+
+      displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>Generating flashcards quickly...</p>";
+
+      const prompt = `Based on the following text, generate 5 flashcards. 
+You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
+Format:
+[
+  { "front": "Term or Question", "definition": "Definition or Answer" }
+]
+
+Text:
+${notes}`;
+
+      try {
+        const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${GROQ_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-8b-instant",
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data.choices && data.choices.length > 0) {
+          let rawContent = data.choices[0].message.content.trim();
+          
+          if (rawContent.startsWith("```json")) {
+            rawContent = rawContent.substring(7);
+          } else if (rawContent.startsWith("```")) {
+            rawContent = rawContent.substring(3);
+          }
+          if (rawContent.endsWith("```")) {
+            rawContent = rawContent.substring(0, rawContent.length - 3);
+          }
+          rawContent = rawContent.trim();
+
+          const generatedCards = JSON.parse(rawContent);
+          flashcardDeck = generatedCards.map(c => ({ front: c.front, back: c.definition || c.back }));
+          currentCardIndex = 0;
+          isShowingFront = true;
+          renderFlashcardPlayer();
+        } else {
+          displayArea.innerHTML = "AI Error generating flashcards.";
+        }
+      } catch (err) {
+        displayArea.innerHTML = "Error generating flashcards. Please try again.";
+      }
+    });
+  }
+
+  // Initial load execution on startup
+  renderSavedTasks();
+  updateAnalyticsDisplay();
+});
