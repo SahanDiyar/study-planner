@@ -551,11 +551,12 @@ if (generateFlashcardsBtn) {
 
     displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>Generating flashcards quickly...</p>";
 
+    // FIXED PROMPT: Explicitly requests "front" and "back" matching the player format
     const prompt = `Based on the following text, generate 5 flashcards. 
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
 [
-  { "front": "Term or Question", "definition": "Definition or Answer" }
+  { "front": "Term or Question", "back": "Definition or Answer" }
 ]
 
 Text:
@@ -590,7 +591,8 @@ ${notes}`;
         rawContent = rawContent.trim();
 
         const generatedCards = JSON.parse(rawContent);
-        flashcardDeck = generatedCards.map(c => ({ front: c.front, back: c.definition || c.back }));
+        // FIXED MAPPER: Handles both 'back' and 'definition' safely
+        flashcardDeck = generatedCards.map(c => ({ front: c.front, back: c.back || c.definition }));
         currentCardIndex = 0;
         isShowingFront = true;
         renderFlashcardPlayer();
