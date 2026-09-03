@@ -20,6 +20,61 @@ function recordActivity(type, amount = 1) {
   localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
 }
 
+// --- UPDATE ANALYTICS DASHBOARD DISPLAY ---
+function updateAnalyticsDisplay() {
+  // Calculate completed tasks from storage/DOM
+  const tasks = JSON.parse(localStorage.getItem('studyPlannerTasks')) || [];
+  const completedCount = tasks.filter(t => t.completed).length;
+  
+  const statCompletedTasks = document.getElementById('stat-completed-tasks');
+  if (statCompletedTasks) statCompletedTasks.innerText = completedCount;
+
+  const statFlashcards = document.getElementById('stat-flashcards-reviewed');
+  if (statFlashcards) statFlashcards.innerText = userStats.flashcardsReviewed || 0;
+
+  const statAvgQuiz = document.getElementById('stat-avg-quiz');
+  if (statAvgQuiz) {
+    if (userStats.quizScores.length > 0) {
+      const sum = userStats.quizScores.reduce((a, b) => a + b, 0);
+      const avg = Math.round(sum / userStats.quizScores.length);
+      statAvgQuiz.innerText = avg + '%';
+    } else {
+      statAvgQuiz.innerText = '0%';
+    }
+  }
+
+  // Calculate past 7 and 30 days totals from history
+  let weeklyTasks = 0, weeklyFlashcards = 0, weeklyQuizzes = 0;
+  let monthlyTasks = 0, monthlyFlashcards = 0, monthlyQuizzes = 0;
+
+  const now = new Date();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    const dateKey = d.toISOString().split('T')[0];
+    const dayData = userStats.history[dateKey];
+
+    if (dayData) {
+      if (i < 7) {
+        weeklyTasks += dayData.tasks || 0;
+        weeklyFlashcards += dayData.flashcards || 0;
+        weeklyQuizzes += dayData.quizzes || 0;
+      }
+      monthlyTasks += dayData.tasks || 0;
+      monthlyFlashcards += dayData.flashcards || 0;
+      monthlyQuizzes += dayData.quizzes || 0;
+    }
+  }
+
+  if (document.getElementById('stat-weekly-tasks')) document.getElementById('stat-weekly-tasks').innerText = weeklyTasks;
+  if (document.getElementById('stat-weekly-flashcards')) document.getElementById('stat-weekly-flashcards').innerText = weeklyFlashcards;
+  if (document.getElementById('stat-weekly-quizzes')) document.getElementById('stat-weekly-quizzes').innerText = weeklyQuizzes;
+
+  if (document.getElementById('stat-monthly-tasks')) document.getElementById('stat-monthly-tasks').innerText = monthlyTasks;
+  if (document.getElementById('stat-monthly-flashcards')) document.getElementById('stat-monthly-flashcards').innerText = monthlyFlashcards;
+  if (document.getElementById('stat-monthly-quizzes')) document.getElementById('stat-monthly-quizzes').innerText = monthlyQuizzes;
+}
+
 // --- TASK MANAGER LOGIC WITH LOCALSTORAGE ---
 let savedTasks = JSON.parse(localStorage.getItem('studyPlannerTasks')) || [];
 
@@ -37,14 +92,13 @@ function saveTasksToStorage() {
 }
 
 function renderSavedTasks() {
-  if (savedTasks.length === 0) return;
-
   let taskList = document.getElementById('task-list');
   if (!taskList) {
     taskList = document.createElement('ul');
     taskList.id = 'task-list';
     taskList.style.listStyle = 'none';
     taskList.style.marginTop = '15px';
+    taskList.style.paddingLeft = '0';
     const taskInputSection = document.querySelector('.task-input-section');
     if (taskInputSection) {
       taskInputSection.after(taskList);
@@ -52,6 +106,8 @@ function renderSavedTasks() {
       return;
     }
   }
+  
+  taskList.innerHTML = '';
 
   savedTasks.forEach(taskObj => {
     const li = document.createElement('li');
@@ -79,6 +135,7 @@ function renderSavedTasks() {
       if (checkbox.checked) {
         span.style.textDecoration = 'line-through';
         span.style.color = '#9ca3af';
+        recordActivity('tasks', 1);
       } else {
         span.style.textDecoration = 'none';
         span.style.color = '#1f2937';
@@ -108,58 +165,10 @@ if (addTaskBtn) {
       return;
     }
 
-    let taskList = document.getElementById('task-list');
-    if (!taskList) {
-      taskList = document.createElement('ul');
-      taskList.id = 'task-list';
-      taskList.style.listStyle = 'none';
-      taskList.style.marginTop = '15px';
-      const taskInputSection = document.querySelector('.task-input-section');
-      if (taskInputSection) taskInputSection.after(taskList);
-    }
-
-    const li = document.createElement('li');
-    li.style.display = 'flex';
-    li.style.justifyContent = 'space-between';
-    li.style.alignItems = 'center';
-    li.style.padding = '8px 12px';
-    li.style.background = '#f9fafb';
-    li.style.border = '1px solid #e5e7eb';
-    li.style.borderRadius = '6px';
-    li.style.marginBottom = '8px';
-
-    li.innerHTML = `
-      <span style="font-size: 0.95rem; color: #1f2937;">${taskText}</span>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <input type="checkbox" style="width: 18px; height: 18px; cursor: pointer;" title="Mark as complete">
-        <button style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delete</button>
-      </div>
-    `;
-
-    const checkbox = li.querySelector('input[type="checkbox"]');
-    const span = li.querySelector('span');
-    
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) {
-        span.style.textDecoration = 'line-through';
-        span.style.color = '#9ca3af';
-      } else {
-        span.style.textDecoration = 'none';
-        span.style.color = '#1f2937';
-      }
-      saveTasksToStorage();
-      updateAnalyticsDisplay();
-    });
-
-    li.querySelector('button').addEventListener('click', () => {
-      li.remove();
-      saveTasksToStorage();
-      updateAnalyticsDisplay();
-    });
-
-    taskList.appendChild(li);
-    taskInput.value = "";
+    savedTasks.push({ text: taskText, completed: false });
     saveTasksToStorage();
+    renderSavedTasks();
+    taskInput.value = "";
     updateAnalyticsDisplay();
   });
 }
@@ -381,7 +390,7 @@ function startInteractiveBlank(questions, container) {
     const q = questions[currentIndex];
     
     container.innerHTML = `
-      <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Question ${currentIndex + 1} of${questions.length}</div>
+      <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Question ${currentIndex + 1} of ${questions.length}</div>
       <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 1rem; color: #1f2937; font-weight: 500;">${q.sentence}</div>
       <input type="text" id="blank-input" placeholder="Type missing word here..." style="width: 100%; padding: 10px; border: 1.5px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; margin-bottom: 15px; box-sizing: border-box;">
       <button id="submit-blank" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Check Answer</button>
@@ -540,7 +549,7 @@ function startInteractiveMCQ(questions, container) {
     const q = questions[currentIndex];
     
     container.innerHTML = `
-      <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Question ${currentIndex + 1} of${questions.length}</div>
+      <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Question ${currentIndex + 1} of ${questions.length}</div>
       <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 1rem; color: #1f2937; font-weight: 500;">${q.question}</div>
       <div id="options-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;"></div>
       <button id="submit-ans" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;" disabled>Submit Answer</button>
@@ -646,6 +655,66 @@ if (modeAutoBtn && modeManualBtn) {
   });
 }
 
+function renderFlashcardPlayer() {
+  const displayArea = document.getElementById('flashcard-display-area');
+  if (!displayArea) return;
+
+  if (flashcardDeck.length === 0) {
+    displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>No flashcards in the deck yet. Generate or create some above!</p>";
+    return;
+  }
+
+  const currentCard = flashcardDeck[currentCardIndex];
+
+  displayArea.innerHTML = `
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; display: flex; flex-direction: column; justify-content: space-between;">
+      <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
+      <div style="font-size: 1.1rem; color: #1e293b; margin: 15px 0; font-weight: 500;">
+        ${isShowingFront ? currentCard.front : currentCard.back}
+      </div>
+      <div style="font-size: 0.75rem; color: #94a3b8;">(Click card to flip)</div>
+    </div>
+    <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+      <button id="prev-card-btn" style="background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Previous</button>
+      <button id="flip-card-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Flip Card</button>
+      <button id="next-card-btn" style="background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Next</button>
+    </div>
+  `;
+
+  displayArea.querySelector('div').addEventListener('click', () => {
+    isShowingFront = !isShowingFront;
+    renderFlashcardPlayer();
+  });
+
+  document.getElementById('flip-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    isShowingFront = !isShowingFront;
+    renderFlashcardPlayer();
+  });
+
+  document.getElementById('prev-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentCardIndex > 0) {
+      currentCardIndex--;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+    }
+  });
+
+  document.getElementById('next-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentCardIndex < flashcardDeck.length - 1) {
+      currentCardIndex++;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+      recordActivity('flashcards', 1);
+      userStats.flashcardsReviewed = (userStats.flashcardsReviewed || 0) + 1;
+      localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
+      updateAnalyticsDisplay();
+    }
+  });
+}
+
 const addManualCardBtn = document.getElementById('add-manual-card-btn');
 if (addManualCardBtn) {
   addManualCardBtn.addEventListener('click', () => {
@@ -662,6 +731,7 @@ if (addManualCardBtn) {
     document.getElementById('manual-back').value = '';
     
     currentCardIndex = flashcardDeck.length - 1;
+    isShowingFront = true;
     renderFlashcardPlayer();
   });
 }
@@ -680,4 +750,55 @@ if (generateFlashcardsBtn) {
     displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>Generating flashcards with AI...</p>";
 
     const prompt = `Based on the following text, generate 5 flashcards. 
-You MUST
+You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
+Format:
+[
+  { "front": "Term or Question", "definition": "Definition or Answer" }
+]
+
+Text:
+${notes}`;
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer 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",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-20b",
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.choices && data.choices.length > 0) {
+        let rawContent = data.choices[0].message.content.trim();
+        
+        if (rawContent.startsWith("```json")) {
+          rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
+        } else if (rawContent.startsWith("```")) {
+          rawContent = rawContent.replace(/^```/, "").replace(/```$/, "").trim();
+        }
+
+        const generatedCards = JSON.parse(rawContent);
+        flashcardDeck = generatedCards.map(c => ({ front: c.front, back: c.definition || c.back }));
+        currentCardIndex = 0;
+        isShowingFront = true;
+        renderFlashcardPlayer();
+      } else {
+        displayArea.innerHTML = "AI Error generating flashcards.";
+      }
+    } catch (err) {
+      displayArea.innerHTML = "Error generating flashcards. Please try again.";
+    }
+  });
+}
+
+// Initial load execution on startup
+document.addEventListener('DOMContentLoaded', () => {
+  renderSavedTasks();
+  updateAnalyticsDisplay();
+});
