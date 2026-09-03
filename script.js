@@ -22,15 +22,21 @@ function recordActivity(type, amount = 1) {
 
 // --- UPDATE ANALYTICS DASHBOARD DISPLAY ---
 function updateAnalyticsDisplay() {
+  // Calculate total flashcards reviewed from the persistent history across all days
+  let totalFlashcardsFromHistory = 0;
+  Object.values(userStats.history).forEach(dayData => {
+    totalFlashcardsFromHistory += dayData.flashcards || 0;
+  });
+
+  const statFlashcards = document.getElementById('stat-flashcards-reviewed');
+  if (statFlashcards) statFlashcards.innerText = totalFlashcardsFromHistory;
+
   // Calculate completed tasks from storage/DOM
   const tasks = JSON.parse(localStorage.getItem('studyPlannerTasks')) || [];
   const completedCount = tasks.filter(t => t.completed).length;
   
   const statCompletedTasks = document.getElementById('stat-completed-tasks');
   if (statCompletedTasks) statCompletedTasks.innerText = completedCount;
-
-  const statFlashcards = document.getElementById('stat-flashcards-reviewed');
-  if (statFlashcards) statFlashcards.innerText = userStats.flashcardsReviewed || 0;
 
   const statAvgQuiz = document.getElementById('stat-avg-quiz');
   if (statAvgQuiz) {
@@ -708,8 +714,6 @@ function renderFlashcardPlayer() {
       isShowingFront = true;
       renderFlashcardPlayer();
       recordActivity('flashcards', 1);
-      userStats.flashcardsReviewed = (userStats.flashcardsReviewed || 0) + 1;
-      localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
       updateAnalyticsDisplay();
     }
   });
