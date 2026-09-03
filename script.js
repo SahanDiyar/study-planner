@@ -317,7 +317,7 @@ ${notes}`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "openai/gpt-oss-20b",
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -764,11 +764,11 @@ ${notes}`;
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": "Bearer gsk_Rugl85sRCdCzVdpppHCSWGdyb3FYukydOzO71v3Abyk4169fPIM",
+          "Authorization": "Bearer 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",
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "openai/gpt-oss-20b",
           messages: [{ role: "user", content: prompt }]
         })
       });
