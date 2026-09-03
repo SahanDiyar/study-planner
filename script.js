@@ -5,6 +5,11 @@ let flashcardDeck = [];
 let currentCardIndex = 0;
 let isShowingFront = true;
 
+// Interactive Quiz State
+let currentQuizQuestions = [];
+let currentQuizIndex = 0;
+let userScore = 0;
+
 const GROQ_API_KEY = "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";
 
 // --- TASK MANAGER ---
@@ -75,7 +80,7 @@ function updateAnalyticsDisplay() {
   if (flashcardsEl) flashcardsEl.innerText = totalFlashcards;
 }
 
-// --- QUIZ & CONTENT GENERATOR ---
+// --- INTERACTIVE QUIZ GENERATOR & PLAYER ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
@@ -86,7 +91,7 @@ if (generateContentBtn) {
 
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
-    const activityType = activityTypeEl ? activityTypeEl.value : 'Normal Q&A / Worksheet';
+    const activityType = activityTypeEl ? activityTypeEl.value : 'Multiple Choice (MCQ)';
     const count = countEl ? countEl.value : '3';
 
     if (!notes) {
@@ -94,10 +99,27 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #6b7280;'>Generating content quickly with AI...</p>";
+    displayArea.innerHTML = "<p style='color: #6b7280;'>Building your interactive activity...</p>";
 
-    const prompt = `Based on the following notes, generate ${count} items of type "${activityType}".
-Text:
+    const prompt = `Based on the following notes, generate ${count} interactive questions of type "${activityType}".
+You MUST return ONLY a valid JSON array and nothing else (no markdown wrappers like \`\`\`json, just the raw array).
+Format for Multiple Choice:
+[
+  {
+    "question": "Question text here?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "answer": "Exact text of the correct option"
+  }
+]
+Format for Fill in the Blanks:
+[
+  {
+    "question": "Sentence with a _____ blank.",
+    "answer": "correctword"
+  }
+]
+
+Notes:
 ${notes}`;
 
     try {
@@ -115,15 +137,144 @@ ${notes}`;
 
       const data = await response.json();
       if (data.choices && data.choices.length > 0) {
-        displayArea.innerHTML = `<div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; white-space: pre-wrap;">${data.choices[0].message.content}</div>`;
+        let rawContent = data.choices[0].message.content.trim();
+        if (rawContent.startsWith("```json")) rawContent = rawContent.substring(7);
+        if (rawContent.startsWith("```")) rawContent = rawContent.substring(3);
+        if (rawContent.endsWith("```")) rawContent = rawContent.substring(0, rawContent.length - 3);
+        rawContent = rawContent.trim();
+
+        currentQuizQuestions = JSON.parse(rawContent);
+        currentQuizIndex = 0;
+        userScore = 0;
+        renderQuizQuestion();
         recordActivity('quizzes', 1);
       } else {
         displayArea.innerHTML = "AI Error: " + (data.error?.message || "Failed to generate.");
       }
     } catch (err) {
-      displayArea.innerHTML = "Error connecting to AI API.";
+      displayArea.innerHTML = "Error parsing quiz content. Try clicking generate again.";
     }
   });
+}
+
+function renderQuizQuestion() {
+  const displayArea = document.getElementById('content-display-area');
+  if (!displayArea) return;
+
+  if (currentQuizIndex >= currentQuizQuestions.length) {
+    displayArea.innerHTML = `
+      <div style="background: #f8fafc; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid #cbd5e1;">
+        <h3 style="color: #2563eb; margin-top: 0;">Quiz Completed! 🎉</h3>
+        <p style="font-size: 1.1rem; color: #1e293b;">Your Score: <strong>${userScore} / ${currentQuizQuestions.length}</strong></p>
+        <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Start New Quiz</button>
+      </div>
+    `;
+    return;
+  }
+
+  const q = currentQuizQuestions[currentQuizIndex];
+  const isBlankType = q.options === undefined;
+
+  let html = `
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">
+      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+  `;
+
+  if (!isBlankType) {
+    html += `<div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">`;
+    q.options.forEach(opt => {
+      html += `
+        <button class="quiz-option-btn" onclick="handleOptionClick(this, '${escapeQuotes(opt)}', '${escapeQuotes(q.answer)}') " 
+          style="text-align: left; padding: 12px 16px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 1rem; color: #1e293b; transition: all 0.2s;">
+          ${opt}
+        </button>
+      `;
+    });
+    html += `</div>`;
+  } else {
+    html += `
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <input type="text" id="blank-answer-input" placeholder="Type your answer..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+        <button onclick="handleBlankSubmit('${escapeQuotes(q.answer)}')" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit</button>
+      </div>
+    `;
+  }
+
+  html += `
+      <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
+      <div style="text-align: right; margin-top: 15px;">
+        <button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next Question →</button>
+      </div>
+    </div>
+  `;
+
+  displayArea.innerHTML = html;
+}
+
+window.handleOptionClick = function(buttonElement, chosen, correct) {
+  const allBtns = document.querySelectorAll('.quiz-option-btn');
+  allBtns.forEach(btn => btn.disabled = true);
+
+  const feedbackEl = document.getElementById('quiz-feedback');
+  const nextBtn = document.getElementById('next-q-btn');
+
+  if (chosen.trim().toLowerCase() === correct.trim().toLowerCase()) {
+    buttonElement.style.background = "#dcfce7";
+    buttonElement.style.borderColor = "#10b981";
+    buttonElement.style.color = "#166534";
+    feedbackEl.style.color = "#166534";
+    feedbackEl.innerText = "Correct! Great job.";
+    userScore++;
+  } else {
+    buttonElement.style.background = "#fee2e2";
+    buttonElement.style.borderColor = "#ef4444";
+    buttonElement.style.color = "#991b1b";
+    feedbackEl.style.color = "#991b1b";
+    feedbackEl.innerText = `Incorrect. The correct answer was: ${correct}`;
+    
+    // Highlight correct option
+    allBtns.forEach(btn => {
+      if (btn.innerText.trim().toLowerCase() === correct.trim().toLowerCase()) {
+        btn.style.background = "#dcfce7";
+        btn.style.borderColor = "#10b981";
+      }
+    });
+  }
+
+  if (nextBtn) nextBtn.style.display = 'inline-block';
+};
+
+window.handleBlankSubmit = function(correct) {
+  const inputEl = document.getElementById('blank-answer-input');
+  const feedbackEl = document.getElementById('quiz-feedback');
+  const nextBtn = document.getElementById('next-q-btn');
+  if (!inputEl) return;
+
+  const val = inputEl.value.trim();
+  if (!val) return;
+
+  inputEl.disabled = true;
+
+  if (val.toLowerCase() === correct.toLowerCase()) {
+    feedbackEl.style.color = "#166534";
+    feedbackEl.innerText = "Correct!";
+    userScore++;
+  } else {
+    feedbackEl.style.color = "#991b1b";
+    feedbackEl.innerText = `Incorrect. Expected: "${correct}"`;
+  }
+
+  if (nextBtn) nextBtn.style.display = 'inline-block';
+};
+
+window.nextQuestion = function() {
+  currentQuizIndex++;
+  renderQuizQuestion();
+};
+
+function escapeQuotes(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 // --- FLASHCARD SYSTEM LOGIC ---
@@ -254,7 +405,7 @@ Text:
 ${notes}`;
 
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${GROQ_API_KEY}`,
