@@ -5,7 +5,7 @@ let flashcardDeck = [];
 let currentCardIndex = 0;
 let isShowingFront = true;
 
-const GROQ_API_KEY = "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"; // Replace with your actual key if needed, or keep your existing variable
+const GROQ_API_KEY = "gsk_YOUR_KEY_HERE"; // Replace with your actual Groq API key
 
 // --- TASK MANAGER ---
 const addTaskBtn = document.getElementById('add-task-btn');
@@ -19,11 +19,11 @@ function renderTasks() {
     const li = document.createElement('li');
     li.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #e5e7eb;";
     li.innerHTML = `
-      <span style="${task.completed ? 'text-decoration: line-through; color: #9ca3af;' : ''}">${task.text}</span>
-      <div>
-        <button onclick="toggleTask(${index})" style="margin-right: 5px; background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">${task.completed ? 'Undo' : 'Done'}</button>
-        <button onclick="deleteTask(${index})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Delete</button>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${index})" style="width: 18px; height: 18px; cursor: pointer;">
+        <span style="${task.completed ? 'text-decoration: line-through; color: #9ca3af;' : 'color: #1f2937;'}">${task.text}</span>
       </div>
+      <button onclick="deleteTask(${index})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Delete</button>
     `;
     taskList.appendChild(li);
   });
@@ -94,7 +94,7 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #6b7280;'>Generating content with AI...</p>";
+    displayArea.innerHTML = "<p style='color: #6b7280;'>Generating content quickly with AI...</p>";
 
     const prompt = `Based on the following notes, generate ${count} items of type "${activityType}".
 Text:
@@ -108,7 +108,7 @@ ${notes}`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "llama-3.1-8b-instant",
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -261,7 +261,7 @@ ${notes}`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "llama-3.1-8b-instant",
           messages: [{ role: "user", content: prompt }]
         })
       });
