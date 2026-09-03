@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- UPDATED GENERATOR LOGIC ---
+  // --- UPDATED GENERATOR LOGIC (FAST MODEL) ---
   const generateBtn = document.getElementById('generate-btn');
   if (generateBtn) {
     generateBtn.addEventListener('click', async () => {
@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      outputDiv.innerHTML = "Generating content...";
+      outputDiv.innerHTML = "Generating content quickly...";
 
       const isNormalQA = quizType.includes("normal") || quizType.includes("q&a");
       const isBlank = quizType.includes("blank");
@@ -328,7 +328,7 @@ ${notes}`;
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "llama-3.1-8b-instant",
             messages: [{ role: "user", content: prompt }]
           })
         });
@@ -339,4 +339,186 @@ ${notes}`;
           let rawContent = data.choices[0].message.content.trim();
           
           if (rawContent.startsWith("```json")) {
-            rawContent = rawContent.replace(/^
+            rawContent = rawContent.substring(7);
+          } else if (rawContent.startsWith("```")) {
+            rawContent = rawContent.substring(3);
+          }
+          if (rawContent.endsWith("```")) {
+            rawContent = rawContent.substring(0, rawContent.length - 3);
+          }
+          rawContent = rawContent.trim();
+
+          if (isNormalQA) {
+            outputDiv.innerHTML = `
+              <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
+                <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">Study Questions & Worksheet</h3>
+                <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
+              </div>
+            `;
+            userStats.quizScores.push(100);
+            recordActivity('quizzes', 1);
+            updateAnalyticsDisplay();
+          } else if (isBlank) {
+            const blankQuestions = JSON.parse(rawContent);
+            startInteractiveBlank(blankQuestions, outputDiv);
+          } else if (isMatching) {
+            const matchingPairs = JSON.parse(rawContent);
+            startInteractiveMatching(matchingPairs, outputDiv);
+          } else {
+            const quizQuestions = JSON.parse(rawContent);
+            startInteractiveMCQ(quizQuestions, outputDiv);
+          }
+
+        } else {
+          outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Invalid response from AI.");
+        }
+      } catch (error) {
+        outputDiv.innerHTML = "Error generating content. Please try again.";
+      }
+    });
+  }
+
+  // --- FILL-IN-THE-BLANK INTERACTIVE FLOW ---
+  function startInteractiveBlank(questions, container) {
+    let currentIndex = 0;
+    let score = 0;
+
+    function renderBlankQuestion() {
+      if (currentIndex >= questions.length) {
+        const percentage = Math.round((score / questions.length) * 100);
+        userStats.quizScores.push(percentage);
+        recordActivity('quizzes', 1);
+        updateAnalyticsDisplay();
+
+        container.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+            <h3 style="color: #1f2937; margin-bottom: 10px;">Fill-in-the-Blank Completed!</h3>
+            <p style="font-size: 1.1rem; color: #4b5563;">Your Score: <strong>${score} / ${questions.length} (${percentage}%)</strong></p>
+            <button id="restart-blank" style="margin-top: 15px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Retake Activity</button>
+          </div>
+        `;
+        document.getElementById('restart-blank').addEventListener('click', () => {
+          currentIndex = 0;
+          score = 0;
+          renderBlankQuestion();
+        });
+        return;
+      }
+
+      const q = questions[currentIndex];
+      
+      container.innerHTML = `
+        <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 8px; font-weight: 600;">Question ${currentIndex + 1} of ${questions.length}</div>
+        <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 1rem; color: #1f2937; font-weight: 500;">${q.sentence}</div>
+        <input type="text" id="blank-input" placeholder="Type missing word here..." style="width: 100%; padding: 10px; border: 1.5px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; margin-bottom: 15px; box-sizing: border-box;">
+        <button id="submit-blank" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Check Answer</button>
+        <div id="blank-feedback" style="margin-top: 10px; font-weight: bold; font-size: 0.9rem;"></div>
+      `;
+
+      const inputField = document.getElementById('blank-input');
+      inputField.focus();
+
+      document.getElementById('submit-blank').addEventListener('click', () => {
+        const userAns = inputField.value.trim().toLowerCase();
+        const correctAns = q.answer.trim().toLowerCase();
+        const feedback = document.getElementById('blank-feedback');
+        
+        inputField.disabled = true;
+        document.getElementById('submit-blank').style.display = 'none';
+
+        if (userAns === correctAns) {
+          feedback.style.color = '#059669';
+          feedback.innerText = "Correct!";
+          score++;
+        } else {
+          feedback.style.color = '#dc2626';
+          feedback.innerText = `Incorrect. The correct answer was: "${q.answer}"`;
+        }
+
+        const nextBtn = document.createElement('button');
+        nextBtn.innerText = currentIndex === questions.length - 1 ? 'Finish Activity' : 'Next Question ->';
+        nextBtn.style.cssText = `
+          margin-top: 12px; background: #3b82f6; color: white; border: none; 
+          padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
+        `;
+        nextBtn.addEventListener('click', () => {
+          currentIndex++;
+          renderBlankQuestion();
+        });
+        container.appendChild(nextBtn);
+      });
+    }
+
+    renderBlankQuestion();
+  }
+
+  // --- MATCHING INTERACTIVE FLOW ---
+  function startInteractiveMatching(pairs, container) {
+    let matchedCount = 0;
+    const shuffledDefinitions = [...pairs].sort(() => Math.random() - 0.5);
+
+    container.innerHTML = `
+      <div style="font-size: 0.9rem; color: #4b5563; margin-bottom: 12px; font-weight: 600;">Match each term on the left with its definition on the right:</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;" id="matching-grid">
+        <div id="terms-column" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        <div id="defs-column" style="display: flex; flex-direction: column; gap: 10px;"></div>
+      </div>
+      <div id="matching-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.9rem; text-align: center;"></div>
+    `;
+
+    const termsCol = document.getElementById('terms-column');
+    const defsCol = document.getElementById('defs-column');
+    let selectedTermEl = null;
+    let selectedTermPair = null;
+
+    pairs.forEach(pair => {
+      const btn = document.createElement('div');
+      btn.innerText = pair.term;
+      btn.style.cssText = `
+        padding: 10px; background: white; border: 1.5px solid #d1d5db; border-radius: 6px; 
+        cursor: pointer; font-size: 0.9rem; color: #1f2937; font-weight: 500; text-align: center;
+      `;
+      btn.addEventListener('click', () => {
+        if (btn.style.background.includes('rgb(209')) return;
+        termsCol.querySelectorAll('div').forEach(b => {
+          if (!b.style.background.includes('rgb(209')) b.style.borderColor = '#d1d5db';
+        });
+        btn.style.borderColor = '#3b82f6';
+        selectedTermEl = btn;
+        selectedTermPair = pair;
+      });
+      termsCol.appendChild(btn);
+    });
+
+    shuffledDefinitions.forEach(defObj => {
+      const btn = document.createElement('div');
+      btn.innerText = defObj.definition;
+      btn.style.cssText = `
+        padding: 10px; background: white; border: 1.5px solid #d1d5db; border-radius: 6px; 
+        cursor: pointer; font-size: 0.85rem; color: #374151; text-align: center;
+      `;
+      btn.addEventListener('click', () => {
+        if (!selectedTermEl || !selectedTermPair) {
+          alert("Please select a term on the left first!");
+          return;
+        }
+        if (selectedTermPair.definition === defObj.definition) {
+          selectedTermEl.style.background = '#d1fae5';
+          selectedTermEl.style.borderColor = '#10b981';
+          selectedTermEl.style.color = '#065f46';
+          
+          btn.style.background = '#d1fae5';
+          btn.style.borderColor = '#10b981';
+          btn.style.color = '#065f46';
+          
+          matchedCount++;
+          selectedTermEl = null;
+          selectedTermPair = null;
+
+          if (matchedCount === pairs.length) {
+            userStats.quizScores.push(100);
+            recordActivity('quizzes', 1);
+            updateAnalyticsDisplay();
+            document.getElementById('matching-feedback').style.color = '#059669';
+            document.getElementById('matching-feedback').innerText = "Awesome! All pairs matched correctly!";
+          }
