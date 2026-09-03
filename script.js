@@ -5,7 +5,7 @@ let flashcardDeck = [];
 let currentCardIndex = 0;
 let isShowingFront = true;
 
-const GROQ_API_KEY = "gsk_YOUR_KEY_HERE"; // Replace with your actual key if needed, or keep your existing variable
+const GROQ_API_KEY = "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"; // Replace with your actual key if needed, or keep your existing variable
 
 // --- TASK MANAGER ---
 const addTaskBtn = document.getElementById('add-task-btn');
