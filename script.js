@@ -10,6 +10,10 @@ let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
 
+// Matching State variables
+let selectedLeftItem = null;
+let matchedPairsCount = 0;
+
 const GROQ_API_KEY = "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";
 
 // --- TASK MANAGER ---
@@ -99,28 +103,68 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #6b7280;'>Building your interactive activity...</p>";
+    displayArea.innerHTML = "<p style='color: #6b7280;'>Building your activity...</p>";
 
-    const prompt = `Based on the following notes, generate ${count} interactive questions of type "${activityType}".
+    let prompt = "";
+    if (activityType === 'Normal Q&A / Worksheet') {
+      prompt = `Based on the following notes, generate ${count} Q&A worksheet items.
 You MUST return ONLY a valid JSON array and nothing else (no markdown wrappers like \`\`\`json, just the raw array).
-Format for Multiple Choice:
+Format:
 [
   {
-    "question": "Question text here?",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "answer": "Exact text of the correct option"
-  }
-]
-Format for Fill in the Blanks:
-[
-  {
-    "question": "Sentence with a _____ blank.",
-    "answer": "correctword"
+    "type": "worksheet",
+    "questions": [
+      "1. First question text?",
+      "2. Second question text?",
+      "3. Third question text?"
+    ],
+    "answers": [
+      "1. Answer to first question",
+      "2. Answer to second question",
+      "3. Answer to third question"
+    ]
   }
 ]
 
 Notes:
 ${notes}`;
+    } else {
+      prompt = `Based on the following notes, generate interactive items of type "${activityType}" (count: ${count}).
+You MUST return ONLY a valid JSON array and nothing else (no markdown wrappers like \`\`\`json, just the raw array).
+
+- If Multiple Choice (MCQ), use this format:
+[
+  {
+    "type": "mcq",
+    "question": "Question text?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "answer": "Exact text of the correct option"
+  }
+]
+
+- If Fill in the Blanks, use this format:
+[
+  {
+    "type": "blank",
+    "question": "Sentence with a _____ blank.",
+    "answer": "correctword"
+  }
+]
+
+- If Matching, use this format:
+[
+  {
+    "type": "matching",
+    "pairs": [
+      { "left": "Term 1", "right": "Definition 1" },
+      { "left": "Term 2", "right": "Definition 2" }
+    ]
+  }
+]
+
+Notes:
+${notes}`;
+    }
 
     try {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -152,7 +196,7 @@ ${notes}`;
         displayArea.innerHTML = "AI Error: " + (data.error?.message || "Failed to generate.");
       }
     } catch (err) {
-      displayArea.innerHTML = "Error parsing quiz content. Try clicking generate again.";
+      displayArea.innerHTML = "Error parsing activity. Please try clicking generate again.";
     }
   });
 }
@@ -164,25 +208,90 @@ function renderQuizQuestion() {
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `
       <div style="background: #f8fafc; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid #cbd5e1;">
-        <h3 style="color: #2563eb; margin-top: 0;">Quiz Completed! 🎉</h3>
-        <p style="font-size: 1.1rem; color: #1e293b;">Your Score: <strong>${userScore} / ${currentQuizQuestions.length}</strong></p>
-        <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Start New Quiz</button>
+        <h3 style="color: #2563eb; margin-top: 0;">Activity Completed! 🎉</h3>
+        <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Start New Activity</button>
       </div>
     `;
     return;
   }
 
   const q = currentQuizQuestions[currentQuizIndex];
-  const isBlankType = q.options === undefined;
+  const type = q.type || (q.pairs ? 'matching' : (q.options ? 'mcq' : (q.questions ? 'worksheet' : 'blank')));
 
   let html = `
     <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">
-      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
-      <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
   `;
 
-  if (!isBlankType) {
-    html += `<div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">`;
+  if (type === 'worksheet' && q.questions) {
+    html += `
+      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Normal Q&A Worksheet</h3>
+      <div style="margin-bottom: 20px;">
+        <h4 style="color: #475569; margin-bottom: 10px;">Questions:</h4>
+        <ol style="padding-left: 20px; line-height: 1.6; color: #1e293b;">
+          ${q.questions.map(quest => `<li style="margin-bottom: 8px;">${quest.replace(/^\d+[\.\)]\s*/, '')}</li>`).join('')}
+        </ol>
+      </div>
+      <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; border: 1px dashed #94a3b8;">
+        <h4 style="color: #475569; margin-top: 0; margin-bottom: 10px;">Answer Key (Bottom):</h4>
+        <ul style="padding-left: 20px; line-height: 1.6; color: #334155; list-style-type: disc;">
+          ${q.answers.map(ans => `<li style="margin-bottom: 6px;">${ans}</li>`).join('')}
+        </ul>
+      </div>
+      <div style="text-align: right; margin-top: 20px;">
+        <button onclick="nextQuestion()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Done / Next →</button>
+      </div>
+    `;
+  } else if (type === 'matching' && q.pairs) {
+    html += `
+      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Item ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 15px;">Match the items on the left with their correct pairs on the right:</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 10px;" id="matching-left-col">
+          <div style="font-weight: bold; font-size: 0.9rem; color: #475569;">Terms</div>
+          ${shuffleArray([...q.pairs]).map(pair => `
+            <button class="match-left-btn" onclick="selectLeftMatch(this, '${escapeQuotes(pair.left)}')" 
+              style="padding: 10px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500;">
+              ${pair.left}
+            </button>
+          `).join('')}
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;" id="matching-right-col">
+          <div style="font-weight: bold; font-size: 0.9rem; color: #475569;">Definitions</div>
+          ${shuffleArray([...q.pairs]).map(pair => `
+            <button class="match-right-btn" onclick="selectRightMatch(this, '${escapeQuotes(pair.right)}')" 
+              style="padding: 10px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500;">
+              ${pair.right}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
+      <div style="text-align: right; margin-top: 15px;">
+        <button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next →</button>
+      </div>
+    `;
+    selectedLeftItem = null;
+    matchedPairsCount = 0;
+  } else if (type === 'blank') {
+    html += `
+      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Item ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <input type="text" id="blank-answer-input" placeholder="Type your answer..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+        <button onclick="handleBlankSubmit('${escapeQuotes(q.answer)}')" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit</button>
+      </div>
+      <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
+      <div style="text-align: right; margin-top: 15px;">
+        <button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next Question →</button>
+      </div>
+    `;
+  } else {
+    // MCQ default
+    html += `
+      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+      <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
+    `;
     q.options.forEach(opt => {
       html += `
         <button class="quiz-option-btn" onclick="handleOptionClick(this, '${escapeQuotes(opt)}', '${escapeQuotes(q.answer)}') " 
@@ -191,24 +300,16 @@ function renderQuizQuestion() {
         </button>
       `;
     });
-    html += `</div>`;
-  } else {
     html += `
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <input type="text" id="blank-answer-input" placeholder="Type your answer..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
-        <button onclick="handleBlankSubmit('${escapeQuotes(q.answer)}')" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit</button>
       </div>
-    `;
-  }
-
-  html += `
       <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
       <div style="text-align: right; margin-top: 15px;">
         <button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next Question →</button>
       </div>
-    </div>
-  `;
+    `;
+  }
 
+  html += `</div>`;
   displayArea.innerHTML = html;
 }
 
@@ -233,7 +334,6 @@ window.handleOptionClick = function(buttonElement, chosen, correct) {
     feedbackEl.style.color = "#991b1b";
     feedbackEl.innerText = `Incorrect. The correct answer was: ${correct}`;
     
-    // Highlight correct option
     allBtns.forEach(btn => {
       if (btn.innerText.trim().toLowerCase() === correct.trim().toLowerCase()) {
         btn.style.background = "#dcfce7";
@@ -268,10 +368,67 @@ window.handleBlankSubmit = function(correct) {
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
 
+// Matching Interaction Handlers
+window.selectLeftMatch = function(btn, leftText) {
+  document.querySelectorAll('.match-left-btn').forEach(b => {
+    if (!b.disabled) b.style.background = "white";
+  });
+  btn.style.background = "#bfdbfe";
+  selectedLeftItem = { btn, text: leftText };
+};
+
+window.selectRightMatch = function(rightBtn, rightText) {
+  if (!selectedLeftItem) {
+    alert("Please select a term on the left first!");
+    return;
+  }
+
+  const q = currentQuizQuestions[currentQuizIndex];
+  const pairFound = q.pairs.find(p => p.left === selectedLeftItem.text && p.right === rightText);
+
+  if (pairFound) {
+    selectedLeftItem.btn.style.background = "#dcfce7";
+    selectedLeftItem.btn.style.borderColor = "#10b981";
+    selectedLeftItem.btn.disabled = true;
+
+    rightBtn.style.background = "#dcfce7";
+    rightBtn.style.borderColor = "#10b981";
+    rightBtn.disabled = true;
+
+    matchedPairsCount++;
+    userScore++;
+
+    selectedLeftItem = null;
+
+    if (matchedPairsCount === q.pairs.length) {
+      document.getElementById('quiz-feedback').style.color = "#166534";
+      document.getElementById('quiz-feedback').innerText = "All pairs matched correctly! Excellent work.";
+      document.getElementById('next-q-btn').style.display = 'inline-block';
+    }
+  } else {
+    selectedLeftItem.btn.style.background = "#fee2e2";
+    rightBtn.style.background = "#fee2e2";
+    setTimeout(() => {
+      if (!selectedLeftItem.btn.disabled) selectedLeftItem.btn.style.background = "white";
+      rightBtn.style.background = "white";
+    }, 600);
+    document.getElementById('quiz-feedback').style.color = "#991b1b";
+    document.getElementById('quiz-feedback').innerText = "Incorrect match. Try again!";
+  }
+};
+
 window.nextQuestion = function() {
   currentQuizIndex++;
   renderQuizQuestion();
 };
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
 
 function escapeQuotes(str) {
   return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
