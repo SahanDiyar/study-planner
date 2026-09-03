@@ -20,6 +20,67 @@ function recordActivity(type, amount = 1) {
   localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
 }
 
+// --- UPDATE ANALYTICS DASHBOARD DISPLAY ---
+function updateAnalyticsDisplay() {
+  // Calculate total flashcards reviewed from the persistent history across all days
+  let totalFlashcardsFromHistory = 0;
+  Object.values(userStats.history).forEach(dayData => {
+    totalFlashcardsFromHistory += dayData.flashcards || 0;
+  });
+
+  const statFlashcards = document.getElementById('stat-flashcards-reviewed');
+  if (statFlashcards) statFlashcards.innerText = totalFlashcardsFromHistory;
+
+  // Calculate completed tasks from storage/DOM
+  const tasks = JSON.parse(localStorage.getItem('studyPlannerTasks')) || [];
+  const completedCount = tasks.filter(t => t.completed).length;
+  
+  const statCompletedTasks = document.getElementById('stat-completed-tasks');
+  if (statCompletedTasks) statCompletedTasks.innerText = completedCount;
+
+  const statAvgQuiz = document.getElementById('stat-avg-quiz');
+  if (statAvgQuiz) {
+    if (userStats.quizScores.length > 0) {
+      const sum = userStats.quizScores.reduce((a, b) => a + b, 0);
+      const avg = Math.round(sum / userStats.quizScores.length);
+      statAvgQuiz.innerText = avg + '%';
+    } else {
+      statAvgQuiz.innerText = '0%';
+    }
+  }
+
+  // Calculate past 7 and 30 days totals from history
+  let weeklyTasks = 0, weeklyFlashcards = 0, weeklyQuizzes = 0;
+  let monthlyTasks = 0, monthlyFlashcards = 0, monthlyQuizzes = 0;
+
+  const now = new Date();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    const dateKey = d.toISOString().split('T')[0];
+    const dayData = userStats.history[dateKey];
+
+    if (dayData) {
+      if (i < 7) {
+        weeklyTasks += dayData.tasks || 0;
+        weeklyFlashcards += dayData.flashcards || 0;
+        weeklyQuizzes += dayData.quizzes || 0;
+      }
+      monthlyTasks += dayData.tasks || 0;
+      monthlyFlashcards += dayData.flashcards || 0;
+      monthlyQuizzes += dayData.quizzes || 0;
+    }
+  }
+
+  if (document.getElementById('stat-weekly-tasks')) document.getElementById('stat-weekly-tasks').innerText = weeklyTasks;
+  if (document.getElementById('stat-weekly-flashcards')) document.getElementById('stat-weekly-flashcards').innerText = weeklyFlashcards;
+  if (document.getElementById('stat-weekly-quizzes')) document.getElementById('stat-weekly-quizzes').innerText = weeklyQuizzes;
+
+  if (document.getElementById('stat-monthly-tasks')) document.getElementById('stat-monthly-tasks').innerText = monthlyTasks;
+  if (document.getElementById('stat-monthly-flashcards')) document.getElementById('stat-monthly-flashcards').innerText = monthlyFlashcards;
+  if (document.getElementById('stat-monthly-quizzes')) document.getElementById('stat-monthly-quizzes').innerText = monthlyQuizzes;
+}
+
 // --- TASK MANAGER LOGIC WITH LOCALSTORAGE ---
 let savedTasks = JSON.parse(localStorage.getItem('studyPlannerTasks')) || [];
 
@@ -37,16 +98,22 @@ function saveTasksToStorage() {
 }
 
 function renderSavedTasks() {
-  if (savedTasks.length === 0) return;
-
   let taskList = document.getElementById('task-list');
   if (!taskList) {
     taskList = document.createElement('ul');
     taskList.id = 'task-list';
     taskList.style.listStyle = 'none';
     taskList.style.marginTop = '15px';
-    document.querySelector('.task-input-section').after(taskList);
+    taskList.style.paddingLeft = '0';
+    const taskInputSection = document.querySelector('.task-input-section');
+    if (taskInputSection) {
+      taskInputSection.after(taskList);
+    } else {
+      return;
+    }
   }
+  
+  taskList.innerHTML = '';
 
   savedTasks.forEach(taskObj => {
     const li = document.createElement('li');
@@ -78,10 +145,6 @@ function renderSavedTasks() {
       } else {
         span.style.textDecoration = 'none';
         span.style.color = '#1f2937';
-        const todayKey = getTodayKey();
-        if (userStats.history[todayKey] && userStats.history[todayKey].tasks > 0) {
-          userStats.history[todayKey].tasks -= 1;
-        }
       }
       saveTasksToStorage();
       updateAnalyticsDisplay();
@@ -97,172 +160,119 @@ function renderSavedTasks() {
   });
 }
 
-document.getElementById('add-task-btn').addEventListener('click', () => {
-  const taskInput = document.getElementById('task-input');
-  const taskText = taskInput.value.trim();
+const addTaskBtn = document.getElementById('add-task-btn');
+if (addTaskBtn) {
+  addTaskBtn.addEventListener('click', () => {
+    const taskInput = document.getElementById('task-input');
+    const taskText = taskInput.value.trim();
 
-  if (!taskText) {
-    alert("Please enter a task first!");
-    return;
-  }
-
-  let taskList = document.getElementById('task-list');
-  if (!taskList) {
-    taskList = document.createElement('ul');
-    taskList.id = 'task-list';
-    taskList.style.listStyle = 'none';
-    taskList.style.marginTop = '15px';
-    document.querySelector('.task-input-section').after(taskList);
-  }
-
-  const li = document.createElement('li');
-  li.style.display = 'flex';
-  li.style.justifyContent = 'space-between';
-  li.style.alignItems = 'center';
-  li.style.padding = '8px 12px';
-  li.style.background = '#f9fafb';
-  li.style.border = '1px solid #e5e7eb';
-  li.style.borderRadius = '6px';
-  li.style.marginBottom = '8px';
-
-  li.innerHTML = `
-    <span style="font-size: 0.95rem; color: #1f2937;">${taskText}</span>
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <input type="checkbox" style="width: 18px; height: 18px; cursor: pointer;" title="Mark as complete">
-      <button style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delete</button>
-    </div>
-  `;
-
-  const checkbox = li.querySelector('input[type="checkbox"]');
-  const span = li.querySelector('span');
-  
-  checkbox.addEventListener('change', () => {
-    if (checkbox.checked) {
-      span.style.textDecoration = 'line-through';
-      span.style.color = '#9ca3af';
-      recordActivity('tasks', 1);
-    } else {
-      span.style.textDecoration = 'none';
-      span.style.color = '#1f2937';
-      const todayKey = getTodayKey();
-      if (userStats.history[todayKey] && userStats.history[todayKey].tasks > 0) {
-        userStats.history[todayKey].tasks -= 1;
-      }
+    if (!taskText) {
+      alert("Please enter a task first!");
+      return;
     }
+
+    savedTasks.push({ text: taskText, completed: false });
     saveTasksToStorage();
+    renderSavedTasks();
+    taskInput.value = "";
     updateAnalyticsDisplay();
   });
-
-  li.querySelector('button').addEventListener('click', () => {
-    li.remove();
-    saveTasksToStorage();
-    updateAnalyticsDisplay();
-  });
-
-  taskList.appendChild(li);
-  taskInput.value = "";
-  saveTasksToStorage();
-  updateAnalyticsDisplay();
-});
+}
 
 // --- SUNDAY - THURSDAY SCHEDULE WITH LOCALSTORAGE SAVING ---
-document.getElementById('schedule-btn').addEventListener('click', () => {
-  let scheduleBox = document.getElementById('schedule-view');
-  
-  if (!scheduleBox) {
-    scheduleBox = document.createElement('div');
-    scheduleBox.id = 'schedule-view';
-    scheduleBox.style.background = '#ffffff';
-    scheduleBox.style.border = '1px solid #cbd5e1';
-    scheduleBox.style.padding = '20px';
-    scheduleBox.style.borderRadius = '8px';
-    scheduleBox.style.marginTop = '20px';
-    scheduleBox.style.overflowX = 'auto';
-
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+const scheduleBtn = document.getElementById('schedule-btn');
+if (scheduleBtn) {
+  scheduleBtn.addEventListener('click', () => {
+    let scheduleBox = document.getElementById('schedule-view');
     
-    let tableHTML = `
-      <h3 style="margin-bottom: 12px; font-size: 1.2rem; color: #1f2937;">Weekly School Schedule (Sunday - Thursday)</h3>
-      <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 10px;">Your entries are automatically saved as you type!</p>
-      <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem;">
-        <thead>
-          <tr style="background: #3b82f6; color: white;">
-            <th style="padding: 8px; border: 1px solid #cbd5e1;">Period</th>
-    `;
-    
-    days.forEach(day => {
-      tableHTML += `<th style="padding: 8px; border: 1px solid #cbd5e1;">${day}</th>`;
-    });
-    tableHTML += `</tr></thead><tbody>`;
+    if (!scheduleBox) {
+      scheduleBox = document.createElement('div');
+      scheduleBox.id = 'schedule-view';
+      scheduleBox.style.background = '#ffffff';
+      scheduleBox.style.border = '1px solid #cbd5e1';
+      scheduleBox.style.padding = '20px';
+      scheduleBox.style.borderRadius = '8px';
+      scheduleBox.style.marginTop = '20px';
+      scheduleBox.style.overflowX = 'auto';
 
-    for (let i = 1; i <= 7; i++) {
-      tableHTML += `<tr><td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">Period ${i}</td>`;
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+      
+      let tableHTML = `
+        <h3 style="margin-bottom: 12px; font-size: 1.2rem; color: #1f2937;">Weekly School Schedule (Sunday - Thursday)</h3>
+        <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 10px;">Your entries are automatically saved as you type!</p>
+        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem;">
+          <thead>
+            <tr style="background: #3b82f6; color: white;">
+              <th style="padding: 8px; border: 1px solid #cbd5e1;">Period</th>
+      `;
+      
       days.forEach(day => {
-        const storageKey = `schedule_${day}_period_${i}`;
-        const savedValue = localStorage.getItem(storageKey) || '';
-        tableHTML += `
-          <td style="padding: 6px; border: 1px solid #cbd5e1;">
-            <input type="text" data-key="${storageKey}" value="${savedValue}" placeholder="Subject ${i}" style="width: 90%; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem; text-align: center;">
-          </td>`;
+        tableHTML += `<th style="padding: 8px; border: 1px solid #cbd5e1;">${day}</th>`;
       });
-      tableHTML += `</tr>`;
-    }
+      tableHTML += `</tr></thead><tbody>`;
 
-    tableHTML += `</tbody></table>`;
-    scheduleBox.innerHTML = tableHTML;
-    document.querySelector('.container').appendChild(scheduleBox);
+      for (let i = 1; i <= 7; i++) {
+        tableHTML += `<tr><td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">Period ${i}</td>`;
+        days.forEach(day => {
+          const storageKey = `schedule_${day}_period_${i}`;
+          const savedValue = localStorage.getItem(storageKey) || '';
+          tableHTML += `
+            <td style="padding: 6px; border: 1px solid #cbd5e1;">
+              <input type="text" data-key="${storageKey}" value="${savedValue}" placeholder="Subject ${i}" style="width: 90%; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+            </td>`;
+        });
+        tableHTML += `</tr>`;
+      }
 
-    scheduleBox.querySelectorAll('input').forEach(input => {
-      input.addEventListener('input', (e) => {
-        localStorage.setItem(e.target.dataset.key, e.target.value);
+      tableHTML += `</tbody></table>`;
+      scheduleBox.innerHTML = tableHTML;
+      document.querySelector('.container').appendChild(scheduleBox);
+
+      scheduleBox.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          localStorage.setItem(e.target.dataset.key, e.target.value);
+        });
       });
-    });
 
-  } else {
-    scheduleBox.style.display = scheduleBox.style.display === 'none' ? 'block' : 'none';
-  }
-});
-
-// --- UPDATED GENERATOR LOGIC (MCQ, Normal, Blank, Matching) ---
-document.getElementById('generate-btn').addEventListener('click', async () => {
-  const notes = document.getElementById('study-notes').value;
-  const numQuestions = document.getElementById('num-questions').value;
-  
-  const selects = document.querySelectorAll('select');
-  let quizType = "";
-  selects.forEach(sel => {
-    const val = sel.value.toLowerCase();
-    if (val.includes("normal") || val.includes("q&a") || val.includes("multiple") || val.includes("mcq") || val.includes("blank") || val.includes("matching")) {
-      quizType = val;
+    } else {
+      scheduleBox.style.display = scheduleBox.style.display === 'none' ? 'block' : 'none';
     }
   });
-  if (!quizType && selects.length > 0) {
-    quizType = selects[0].value.toLowerCase();
-  }
+}
 
-  const outputDiv = document.getElementById('quiz-output');
+// --- UPDATED GENERATOR LOGIC ---
+const generateBtn = document.getElementById('generate-btn');
+if (generateBtn) {
+  generateBtn.addEventListener('click', async () => {
+    const notes = document.getElementById('study-notes').value;
+    const numQuestions = document.getElementById('num-questions').value;
+    
+    const quizTypeSelect = document.getElementById('quiz-type');
+    const quizType = quizTypeSelect ? quizTypeSelect.value.toLowerCase() : "mcq";
 
-  if (!notes.trim()) {
-    outputDiv.innerHTML = "Please paste some study notes first!";
-    return;
-  }
+    const outputDiv = document.getElementById('quiz-output');
 
-  outputDiv.innerHTML = "Generating content...";
+    if (!notes.trim()) {
+      outputDiv.innerHTML = "Please paste some study notes first!";
+      return;
+    }
 
-  const isNormalQA = quizType.includes("normal") || quizType.includes("q&a");
-  const isBlank = quizType.includes("blank");
-  const isMatching = quizType.includes("matching");
-  let prompt = "";
+    outputDiv.innerHTML = "Generating content...";
 
-  if (isNormalQA) {
-    prompt = `Based on the following text, create exactly ${numQuestions} standard study questions without any multiple-choice options. 
+    const isNormalQA = quizType.includes("normal") || quizType.includes("q&a");
+    const isBlank = quizType.includes("blank");
+    const isMatching = quizType.includes("matching");
+    let prompt = "";
+
+    if (isNormalQA) {
+      prompt = `Based on the following text, create exactly ${numQuestions} standard study questions without any multiple-choice options. 
 List all the questions first numbered sequentially. 
 Then, provide a separate Answer Key section containing the answers at the very bottom.
 
 Text:
 ${notes}`;
-  } else if (isBlank) {
-    prompt = `Based on the following text, generate exactly ${numQuestions} fill-in-the-blank questions. 
+    } else if (isBlank) {
+      prompt = `Based on the following text, generate exactly ${numQuestions} fill-in-the-blank questions. 
 Replace the key missing word in the sentence with underscores "____".
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
@@ -275,8 +285,8 @@ Format:
 
 Text:
 ${notes}`;
-  } else if (isMatching) {
-    prompt = `Based on the following text, generate ${numQuestions} pairs of matching terms and definitions.
+    } else if (isMatching) {
+      prompt = `Based on the following text, generate ${numQuestions} pairs of matching terms and definitions.
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
 [
@@ -285,9 +295,8 @@ Format:
 
 Text:
 ${notes}`;
-  } else {
-    // Default Multiple Choice (MCQ)
-    prompt = `Based on the following text, generate exactly ${numQuestions} multiple-choice questions. 
+    } else {
+      prompt = `Based on the following text, generate exactly ${numQuestions} multiple-choice questions. 
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
 [
@@ -301,60 +310,61 @@ where "correct" is the index (0 to 3) of the correct option in the options array
 
 Text:
 ${notes}`;
-  }
-
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer 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",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-oss-20b",
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-
-    const data = await response.json();
-    
-    if (data.choices && data.choices.length > 0) {
-      let rawContent = data.choices[0].message.content.trim();
-      
-      if (rawContent.startsWith("```json")) {
-        rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
-      } else if (rawContent.startsWith("```")) {
-        rawContent = rawContent.replace(/^```/, "").replace(/```$/, "").trim();
-      }
-
-      if (isNormalQA) {
-        outputDiv.innerHTML = `
-          <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
-            <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">Study Questions & Worksheet</h3>
-            <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
-          </div>
-        `;
-        userStats.quizScores.push(100);
-        recordActivity('quizzes', 1);
-        updateAnalyticsDisplay();
-      } else if (isBlank) {
-        const blankQuestions = JSON.parse(rawContent);
-        startInteractiveBlank(blankQuestions, outputDiv);
-      } else if (isMatching) {
-        const matchingPairs = JSON.parse(rawContent);
-        startInteractiveMatching(matchingPairs, outputDiv);
-      } else {
-        const quizQuestions = JSON.parse(rawContent);
-        startInteractiveMCQ(quizQuestions, outputDiv);
-      }
-
-    } else {
-      outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Invalid response from AI.");
     }
-  } catch (error) {
-    outputDiv.innerHTML = "Error generating content. Please try again.";
-  }
-});
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer gsk_Rugl85sRCdCzVdpppHCSWGdyb3FYukydOzO71v3Abyk4169fPIM",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-20b",
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.choices && data.choices.length > 0) {
+        let rawContent = data.choices[0].message.content.trim();
+        
+        if (rawContent.startsWith("```json")) {
+          rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
+        } else if (rawContent.startsWith("```")) {
+          rawContent = rawContent.replace(/^```/, "").replace(/```$/, "").trim();
+        }
+
+        if (isNormalQA) {
+          outputDiv.innerHTML = `
+            <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6; color: #1f2937;">
+              <h3 style="color: #3b82f6; margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">Study Questions & Worksheet</h3>
+              <div style="font-size: 0.95rem; white-space: pre-wrap;">${rawContent}</div>
+            </div>
+          `;
+          userStats.quizScores.push(100);
+          recordActivity('quizzes', 1);
+          updateAnalyticsDisplay();
+        } else if (isBlank) {
+          const blankQuestions = JSON.parse(rawContent);
+          startInteractiveBlank(blankQuestions, outputDiv);
+        } else if (isMatching) {
+          const matchingPairs = JSON.parse(rawContent);
+          startInteractiveMatching(matchingPairs, outputDiv);
+        } else {
+          const quizQuestions = JSON.parse(rawContent);
+          startInteractiveMCQ(quizQuestions, outputDiv);
+        }
+
+      } else {
+        outputDiv.innerHTML = "AI Error: " + (data.error?.message || "Invalid response from AI.");
+      }
+    } catch (error) {
+      outputDiv.innerHTML = "Error generating content. Please try again.";
+    }
+  });
+}
 
 // --- FILL-IN-THE-BLANK INTERACTIVE FLOW ---
 function startInteractiveBlank(questions, container) {
@@ -457,7 +467,7 @@ function startInteractiveMatching(pairs, container) {
       cursor: pointer; font-size: 0.9rem; color: #1f2937; font-weight: 500; text-align: center;
     `;
     btn.addEventListener('click', () => {
-      if (btn.style.background.includes('rgb(209')) return; // already matched
+      if (btn.style.background.includes('rgb(209')) return;
       termsCol.querySelectorAll('div').forEach(b => {
         if (!b.style.background.includes('rgb(209')) b.style.borderColor = '#d1d5db';
       });
@@ -481,7 +491,6 @@ function startInteractiveMatching(pairs, container) {
         return;
       }
       if (selectedTermPair.definition === defObj.definition) {
-        // Correct match
         selectedTermEl.style.background = '#d1fae5';
         selectedTermEl.style.borderColor = '#10b981';
         selectedTermEl.style.color = '#065f46';
@@ -502,7 +511,6 @@ function startInteractiveMatching(pairs, container) {
           document.getElementById('matching-feedback').innerText = "Awesome! All pairs matched correctly!";
         }
       } else {
-        // Incorrect match
         selectedTermEl.style.background = '#fee2e2';
         selectedTermEl.style.borderColor = '#ef4444';
         setTimeout(() => {
@@ -653,6 +661,64 @@ if (modeAutoBtn && modeManualBtn) {
   });
 }
 
+function renderFlashcardPlayer() {
+  const displayArea = document.getElementById('flashcard-display-area');
+  if (!displayArea) return;
+
+  if (flashcardDeck.length === 0) {
+    displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>No flashcards in the deck yet. Generate or create some above!</p>";
+    return;
+  }
+
+  const currentCard = flashcardDeck[currentCardIndex];
+
+  displayArea.innerHTML = `
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; display: flex; flex-direction: column; justify-content: space-between;">
+      <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
+      <div style="font-size: 1.1rem; color: #1e293b; margin: 15px 0; font-weight: 500;">
+        ${isShowingFront ? currentCard.front : currentCard.back}
+      </div>
+      <div style="font-size: 0.75rem; color: #94a3b8;">(Click card to flip)</div>
+    </div>
+    <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+      <button id="prev-card-btn" style="background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Previous</button>
+      <button id="flip-card-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Flip Card</button>
+      <button id="next-card-btn" style="background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Next</button>
+    </div>
+  `;
+
+  displayArea.querySelector('div').addEventListener('click', () => {
+    isShowingFront = !isShowingFront;
+    renderFlashcardPlayer();
+  });
+
+  document.getElementById('flip-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    isShowingFront = !isShowingFront;
+    renderFlashcardPlayer();
+  });
+
+  document.getElementById('prev-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentCardIndex > 0) {
+      currentCardIndex--;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+    }
+  });
+
+  document.getElementById('next-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentCardIndex < flashcardDeck.length - 1) {
+      currentCardIndex++;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+      recordActivity('flashcards', 1);
+      updateAnalyticsDisplay();
+    }
+  });
+}
+
 const addManualCardBtn = document.getElementById('add-manual-card-btn');
 if (addManualCardBtn) {
   addManualCardBtn.addEventListener('click', () => {
@@ -669,6 +735,7 @@ if (addManualCardBtn) {
     document.getElementById('manual-back').value = '';
     
     currentCardIndex = flashcardDeck.length - 1;
+    isShowingFront = true;
     renderFlashcardPlayer();
   });
 }
@@ -690,7 +757,7 @@ if (generateFlashcardsBtn) {
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
 [
-  { "front": "Question or term", "back": "Answer or definition" }
+  { "front": "Term or Question", "definition": "Definition or Answer" }
 ]
 
 Text:
@@ -700,7 +767,7 @@ ${notes}`;
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": "Bearer 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",
+          "Authorization": "Bearer gsk_Rugl85sRCdCzVdpppHCSWGdyb3FYukydOzO71v3Abyk4169fPIM",
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -710,152 +777,32 @@ ${notes}`;
       });
 
       const data = await response.json();
+      
       if (data.choices && data.choices.length > 0) {
         let rawContent = data.choices[0].message.content.trim();
+        
         if (rawContent.startsWith("```json")) {
           rawContent = rawContent.replace(/^```json/, "").replace(/```$/, "").trim();
         } else if (rawContent.startsWith("```")) {
           rawContent = rawContent.replace(/^```/, "").replace(/```$/, "").trim();
         }
-        
-        flashcardDeck = JSON.parse(rawContent);
+
+        const generatedCards = JSON.parse(rawContent);
+        flashcardDeck = generatedCards.map(c => ({ front: c.front, back: c.definition || c.back }));
         currentCardIndex = 0;
         isShowingFront = true;
         renderFlashcardPlayer();
       } else {
-        displayArea.innerHTML = "<p style='color: #ef4444;'>Failed to generate flashcards. Try again.</p>";
+        displayArea.innerHTML = "AI Error generating flashcards.";
       }
     } catch (err) {
-      displayArea.innerHTML = "<p style='color: #ef4444;'>An error occurred during generation.</p>";
+      displayArea.innerHTML = "Error generating flashcards. Please try again.";
     }
   });
 }
 
-function renderFlashcardPlayer() {
-  const displayArea = document.getElementById('flashcard-display-area');
-  
-  if (flashcardDeck.length === 0) {
-    displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem; text-align: center;'>No flashcards in the deck yet. Create some above!</p>";
-    return;
-  }
-
-  const card = flashcardDeck[currentCardIndex];
-  const cardText = isShowingFront ? card.front : card.back;
-  const cardLabel = isShowingFront ? "Front (Click card to flip)" : "Back (Click card to flip)";
-  const cardBg = isShowingFront ? "#f8fafc" : "#eff6ff";
-  const cardBorder = isShowingFront ? "#3b82f6" : "#10b981";
-
-  displayArea.innerHTML = `
-    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 6px; text-align: center; font-weight: 600;">
-      Card ${currentCardIndex + 1} of ${flashcardDeck.length}
-    </div>
-    
-    <div id="card-box" style="background: ${cardBg}; border: 2px solid ${cardBorder}; padding: 30px; border-radius: 8px; text-align: center; min-height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-      <span style="font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px; font-weight: bold;">${cardLabel}</span>
-      <p style="font-size: 1.1rem; color: #1f2937; font-weight: 500; margin: 0;">${cardText}</p>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-      <button id="prev-card" style="background: #6b7280; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">&larr; Previous</button>
-      <button id="flip-card-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Flip Card</button>
-      <button id="next-card" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Next &rarr;</button>
-    </div>
-  `;
-
-  const flipAction = () => {
-    isShowingFront = !isShowingFront;
-    userStats.flashcardsReviewed++;
-    recordActivity('flashcards', 1);
-    updateAnalyticsDisplay();
-    renderFlashcardPlayer();
-  };
-
-  document.getElementById('card-box').addEventListener('click', flipAction);
-  document.getElementById('flip-card-btn').addEventListener('click', flipAction);
-
-  document.getElementById('prev-card').addEventListener('click', () => {
-    if (currentCardIndex > 0) {
-      currentCardIndex--;
-      isShowingFront = true;
-      renderFlashcardPlayer();
-    }
-  });
-
-  document.getElementById('next-card').addEventListener('click', () => {
-    if (currentCardIndex < flashcardDeck.length - 1) {
-      currentCardIndex++;
-      isShowingFront = true;
-      renderFlashcardPlayer();
-    }
-  });
-}
-
-// --- ANALYTICS TRACKER SYSTEM ---
-function updateAnalyticsDisplay() {
-  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-  let checkedCount = 0;
-  checkboxes.forEach(box => {
-    if (box.checked) checkedCount++;
-  });
-  userStats.completedTasks = checkedCount;
-
-  let weeklyTasks = 0, weeklyFlashcards = 0, weeklyQuizzes = 0;
-  let monthlyTasks = 0, monthlyFlashcards = 0, monthlyQuizzes = 0;
-
-  const now = new Date();
-  for (let i = 0; i < 30; i++) {
-    const d = new Date();
-    d.setDate(now.getDate() - i);
-    const dateKey = d.toISOString().split('T')[0];
-    
-    if (userStats.history[dateKey]) {
-      if (i < 7) {
-        weeklyTasks += userStats.history[dateKey].tasks || 0;
-        weeklyFlashcards += userStats.history[dateKey].flashcards || 0;
-        weeklyQuizzes += userStats.history[dateKey].quizzes || 0;
-      }
-      monthlyTasks += userStats.history[dateKey].tasks || 0;
-      monthlyFlashcards += userStats.history[dateKey].flashcards || 0;
-      monthlyQuizzes += userStats.history[dateKey].quizzes || 0;
-    }
-  }
-
-  const taskEl = document.getElementById('stat-completed-tasks');
-  const flashcardEl = document.getElementById('stat-flashcards-reviewed');
-  const quizEl = document.getElementById('stat-avg-quiz');
-
-  if (taskEl) taskEl.textContent = userStats.completedTasks;
-  if (flashcardEl) flashcardEl.textContent = userStats.flashcardsReviewed;
-
-  if (quizEl) {
-    if (userStats.quizScores.length > 0) {
-      const sum = userStats.quizScores.reduce((a, b) => a + b, 0);
-      const avg = Math.round(sum / userStats.quizScores.length);
-      quizEl.textContent = avg + '%';
-    } else {
-      quizEl.textContent = '0%';
-    }
-  }
-
-  const weeklyTaskEl = document.getElementById('stat-weekly-tasks');
-  const weeklyFlashcardEl = document.getElementById('stat-weekly-flashcards');
-  const weeklyQuizEl = document.getElementById('stat-weekly-quizzes');
-
-  if (weeklyTaskEl) weeklyTaskEl.textContent = weeklyTasks;
-  if (weeklyFlashcardEl) weeklyFlashcardEl.textContent = weeklyFlashcards;
-  if (weeklyQuizEl) weeklyQuizEl.textContent = weeklyQuizzes;
-
-  const monthlyTaskEl = document.getElementById('stat-monthly-tasks');
-  const monthlyFlashcardEl = document.getElementById('stat-monthly-flashcards');
-  const monthlyQuizEl = document.getElementById('stat-monthly-quizzes');
-
-  if (monthlyTaskEl) monthlyTaskEl.textContent = monthlyTasks;
-  if (monthlyFlashcardEl) monthlyFlashcardEl.textContent = monthlyFlashcards;
-  if (monthlyQuizEl) monthlyQuizEl.textContent = monthlyQuizzes;
-
-  localStorage.setItem('studyPlannerStats', JSON.stringify(userStats));
-}
-
-// Initial Load on startup
-renderSavedTasks();
-updateAnalyticsDisplay();
+// Initial load execution on startup
+document.addEventListener('DOMContentLoaded', () => {
+  renderSavedTasks();
+  updateAnalyticsDisplay();
+});
