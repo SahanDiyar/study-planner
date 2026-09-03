@@ -779,9 +779,6 @@ Format:
   { "front": "Term or Question", "definition": "Definition or Answer" }
 ]
 
-Text:
-${notes}`;
-
       try {
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
