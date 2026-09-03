@@ -775,9 +775,7 @@ ${notes}`;
       const prompt = `Based on the following text, generate 5 flashcards. 
 You MUST return ONLY a valid JSON array with no extra text or markdown blocks outside of it.
 Format:
-[
-  { "front": "Term or Question", "definition": "Definition or Answer" }
-]
+
 
       try {
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
