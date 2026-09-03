@@ -3,121 +3,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Study Planner & Tracker</title>
+  <title>My AI Study Planner</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body style="font-family: Arial, sans-serif; background: #f3f4f6; margin: 0; padding: 20px; color: #1f2937;">
-
   <div class="container" style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
     
-    <!-- HEADER -->
-    <h1 style="color: #2563eb; margin-top: 0; font-size: 1.8rem; text-align: center;">My AI Study Planner</h1>
-    <p style="text-align: center; color: #6b7280; font-size: 0.95rem; margin-bottom: 25px;">
-      Track your progress, view your weekly schedule, and generate interactive quizzes instantly!
-    </p>
+    <h1 style="text-align: center; color: #2563eb; margin-bottom: 5px;">My AI Study Planner</h1>
+    <p style="text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 25px;">Track your progress, view your weekly schedule, and generate interactive quizzes instantly!</p>
 
-    <!-- ANALYTICS DASHBOARD -->
-    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;">📊 Progress Dashboard</h3>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; margin-top: 10px;">
-        <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <span style="font-size: 0.75rem; color: #64748b; display: block;">Completed Tasks</span>
-          <strong id="stat-completed-tasks" style="font-size: 1.2rem; color: #2563eb;">0</strong>
+    <!-- Progress Dashboard -->
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+      <h3 style="margin-top: 0; font-size: 1.1rem; color: #1e293b;">📊 Progress Dashboard</h3>
+      <div style="display: flex; gap: 15px; text-align: center;">
+        <div style="flex: 1; background: white; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 0.8rem; color: #64748b;">Completed Tasks</div>
+          <div id="completed-tasks-metric" style="font-size: 1.2rem; font-weight: bold; color: #2563eb;">0</div>
         </div>
-        <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <span style="font-size: 0.75rem; color: #64748b; display: block;">Flashcards Reviewed</span>
-          <strong id="stat-flashcards-reviewed" style="font-size: 1.2rem; color: #10b981;">0</strong>
-        </div>
-        <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <span style="font-size: 0.75rem; color: #64748b; display: block;">Avg Quiz Score</span>
-          <strong id="stat-avg-quiz" style="font-size: 1.2rem; color: #8b5cf6;">0%</strong>
-        </div>
-      </div>
-
-      <!-- Weekly & Monthly Stats Summary Row -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; font-size: 0.85rem; color: #475569;">
-        <div style="background: #eff6ff; padding: 8px; border-radius: 6px; border: 1px solid #bfdbfe;">
-          <strong>📅 Past 7 Days:</strong> Tasks: <span id="stat-weekly-tasks">0</span> | Flashcards: <span id="stat-weekly-flashcards">0</span> | Quizzes: <span id="stat-weekly-quizzes">0</span>
-        </div>
-        <div style="background: #f0fdf4; padding: 8px; border-radius: 6px; border: 1px solid #bbf7d0;">
-          <strong>🗓️ Past 30 Days:</strong> Tasks: <span id="stat-monthly-tasks">0</span> | Flashcards: <span id="stat-monthly-flashcards">0</span> | Quizzes: <span id="stat-monthly-quizzes">0</span>
+        <div style="flex: 1; background: white; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 0.8rem; color: #64748b;">Flashcards Reviewed</div>
+          <div id="flashcards-reviewed-metric" style="font-size: 1.2rem; font-weight: bold; color: #10b981;">0</div>
         </div>
       </div>
     </div>
 
-    <!-- SCHEDULE TOGGLE BUTTON -->
-    <div style="margin-bottom: 25px; text-align: center;">
-      <button id="schedule-btn" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95rem;">
-        📅 Toggle Weekly School Schedule
-      </button>
-    </div>
-
-    <!-- TASK MANAGER SECTION -->
-    <div style="margin-bottom: 25px; background: #ffffff; border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem; color: #1f2937;">📝 Task Manager</h3>
-      <div class="task-input-section" style="display: flex; gap: 10px;">
-        <input type="text" id="task-input" placeholder="Add a new study task..." style="flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;">
-        <button id="add-task-btn" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Add Task</button>
-      </div>
-    </div>
-
-    <!-- AI STUDY HUB / QUIZ GENERATOR SECTION -->
+    <!-- Task Manager -->
     <div style="background: #ffffff; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem; color: #1f2937;">🤖 AI Study Hub & Generator</h3>
-      
-      <div style="margin-bottom: 12px;">
-        <label for="study-notes" style="display: block; font-weight: 600; font-size: 0.9rem; color: #374151; margin-bottom: 5px;">Paste Notes / Text:</label>
-        <textarea id="study-notes" rows="5" placeholder="Paste your lesson notes, textbook chapter, or article here..." style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box;"></textarea>
+      <h3 style="margin-top: 0; font-size: 1.1rem;">📝 Task Manager</h3>
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <input type="text" id="task-input" placeholder="Add a new study task..." style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;">
+        <button id="add-task-btn" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Add Task</button>
       </div>
+      <ul id="task-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+    </div>
 
-      <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
-        <div>
-          <label for="quiz-type" style="font-weight: 600; font-size: 0.9rem; color: #374151;">Activity Type:</label>
-          <select id="quiz-type" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; background: white;">
-            <option value="MCQ">Multiple Choice (MCQ)</option>
-            <option value="Blank">Fill-in-the-Blank</option>
-            <option value="Matching">Matching Questions</option>
-            <option value="Normal">Normal Q&A / Worksheet</option>
+    <!-- AI Study Hub & Generator -->
+    <div style="background: #ffffff; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+      <h3 style="margin-top: 0; font-size: 1.1rem;">🤖 AI Study Hub & Generator</h3>
+      <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 5px;">Paste Notes / Text:</label>
+      <textarea id="notes-input" rows="4" placeholder="Paste your study notes here..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box;"></textarea>
+      
+      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+        <div style="flex: 1;">
+          <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 3px;">Activity Type:</label>
+          <select id="activity-type" style="width: 100%; padding: 7px; border: 1px solid #d1d5db; border-radius: 6px;">
+            <option value="Multiple Choice (MCQ)">Multiple Choice (MCQ)</option>
+            <option value="Normal Q&A / Worksheet">Normal Q&A / Worksheet</option>
           </select>
         </div>
-
-        <div>
-          <label for="num-questions" style="font-weight: 600; font-size: 0.9rem; color: #374151;">Count:</label>
-          <input type="number" id="num-questions" value="3" min="1" max="10" style="width: 60px; padding: 7px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;">
+        <div style="width: 100px;">
+          <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 3px;">Count:</label>
+          <input type="number" id="question-count" value="3" min="1" max="10" style="width: 100%; padding: 7px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
         </div>
-
-        <button id="generate-btn" style="background: #3b82f6; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: auto;">Generate Content</button>
       </div>
-
-      <div id="quiz-output" style="margin-top: 15px;"></div>
+      <button id="generate-content-btn" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;">Generate Content</button>
+      
+      <div id="content-display-area" style="margin-top: 15px;"></div>
     </div>
 
     <!-- FLASHCARD SECTION -->
     <div style="background: #ffffff; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem; color: #1f2937;">🃏 Flashcard Studio</h3>
+      <h3 style="margin-top: 0; font-size: 1.1rem;">📚 Flashcard Studio</h3>
       
       <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <button id="mode-auto-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">AI Generate</button>
-        <button id="mode-manual-btn" style="background: #e5e7eb; color: #374151; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Manual Add</button>
+        <button id="mode-auto-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">AI Generate</button>
+        <button id="mode-manual-btn" style="background: #e5e7eb; color: #374151; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">Manual Add</button>
       </div>
 
       <!-- AI Mode Container -->
       <div id="flashcard-auto-container">
-        <textarea id="flashcard-notes" rows="3" placeholder="Paste text to auto-generate flashcards..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; box-sizing: border-box; margin-bottom: 8px;"></textarea>
-        <button id="generate-flashcards-btn" style="background: #8b5cf6; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Generate Flashcards</button>
+        <textarea id="flashcard-notes" rows="3" placeholder="Paste text to auto-generate flashcards..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; margin-bottom: 10px;"></textarea>
+        <button id="generate-flashcards-btn" style="background: #8b5cf6; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Generate Flashcards</button>
       </div>
 
       <!-- Manual Mode Container (Hidden by default) -->
       <div id="flashcard-manual-container" style="display: none;">
-        <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
           <input type="text" id="manual-front" placeholder="Front (Term / Question)" style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem;">
           <input type="text" id="manual-back" placeholder="Back (Definition / Answer)" style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem;">
         </div>
-        <button id="add-manual-card-btn" style="background: #10b981; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Add to Deck</button>
+        <button id="add-manual-card-btn" style="background: #10b981; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Add Card</button>
       </div>
 
       <!-- Flashcard Player Display Area -->
       <div id="flashcard-display-area" style="margin-top: 20px;">
-        <p style='color: #6b7280; font-size: 0.9rem; text-align: center;'>No flashcards in the deck yet. Generate or create some above!</p>
+        <p style="color: #6b7280; font-size: 0.9rem; text-align: center;">No flashcards in the deck yet. Generate or create some above!</p>
       </div>
     </div>
 
