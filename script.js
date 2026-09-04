@@ -108,7 +108,7 @@ if (generateContentBtn) {
     let prompt = "";
     if (activityType === 'Normal Q&A / Worksheet') {
       prompt = `Based on the following notes, generate ${count} Q&A worksheet items.
-You MUST return ONLY a valid JSON array and nothing else (no markdown wrappers like \`\`\`json, just the raw array).
+You MUST return ONLY a valid JSON array and nothing else.
 Format:
 [
   {
@@ -130,7 +130,7 @@ Notes:
 ${notes}`;
     } else {
       prompt = `Based on the following notes, generate interactive items of type "${activityType}" (count: ${count}).
-You MUST return ONLY a valid JSON array and nothing else (no markdown wrappers like \`\`\`json, just the raw array).
+You MUST return ONLY a valid JSON array and nothing else.
 
 - If Multiple Choice (MCQ), use this format:
 [
@@ -218,9 +218,7 @@ function renderQuizQuestion() {
   const q = currentQuizQuestions[currentQuizIndex];
   const type = q.type || (q.pairs ? 'matching' : (q.options ? 'mcq' : (q.questions ? 'worksheet' : 'blank')));
 
-  let html = `
-    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">
-  `;
+  let html = `<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">`;
 
   if (type === 'worksheet' && q.questions) {
     html += `
@@ -286,7 +284,6 @@ function renderQuizQuestion() {
       </div>
     `;
   } else {
-    // MCQ default
     html += `
       <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
       <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
@@ -368,7 +365,6 @@ window.handleBlankSubmit = function(correct) {
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
 
-// Matching Interaction Handlers
 window.selectLeftMatch = function(btn, leftText) {
   document.querySelectorAll('.match-left-btn').forEach(b => {
     if (!b.disabled) b.style.background = "white";
@@ -397,7 +393,6 @@ window.selectRightMatch = function(rightBtn, rightText) {
 
     matchedPairsCount++;
     userScore++;
-
     selectedLeftItem = null;
 
     if (matchedPairsCount === q.pairs.length) {
@@ -435,36 +430,7 @@ function escapeQuotes(str) {
 }
 
 // --- FLASHCARD SYSTEM LOGIC ---
-).addEventListener('click', () => {
-    isShowingFront = !isShowingFront;
-    renderFlashcardPlayer();
-  });
-
-  document.getElementById('flip-card-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    isShowingFront = !isShowingFront;
-    renderFlashcardPlayer();
-  });
-
-  document.getElementById('prev-card-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (currentCardIndex > 0) {
-      currentCardIndex--;
-      isShowingFront = true;
-      renderFlashcardPlayer();
-    }
-  });
-
-  document.getElementById('next-card-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (currentCardIndex < flashcardDeck.length - 1) {
-      currentCardIndex++;
-      isShowingFront = true;
-      renderFlashcardPlayer();
-      recordActivity('flashcards', 1);
-    }
-  });
-}const modeAutoBtn = document.getElementById('mode-auto-btn');
+const modeAutoBtn = document.getElementById('mode-auto-btn');
 const modeManualBtn = document.getElementById('mode-manual-btn');
 const autoContainer = document.getElementById('flashcard-auto-container');
 const manualContainer = document.getElementById('flashcard-manual-container');
@@ -506,7 +472,45 @@ function renderFlashcardPlayer() {
     </div>
   `;
 
-  displayArea.querySelector('div'
+  displayArea.querySelector('div').addEventListener('click', () => {
+    isShowingFront = !isShowingFront;
+    renderFlashcardPlayer();
+  });
+
+  const flipBtn = document.getElementById('flip-card-btn');
+  if (flipBtn) {
+    flipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isShowingFront = !isShowingFront;
+      renderFlashcardPlayer();
+    });
+  }
+
+  const prevBtn = document.getElementById('prev-card-btn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentCardIndex > 0) {
+        currentCardIndex--;
+        isShowingFront = true;
+        renderFlashcardPlayer();
+      }
+    });
+  }
+
+  const nextCardBtn = document.getElementById('next-card-btn');
+  if (nextCardBtn) {
+    nextCardBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentCardIndex < flashcardDeck.length - 1) {
+        currentCardIndex++;
+        isShowingFront = true;
+        renderFlashcardPlayer();
+        recordActivity('flashcards', 1);
+      }
+    });
+  }
+}
 
 // Manual Add Flashcard Button
 const addManualCardBtn = document.getElementById('add-manual-card-btn');
@@ -534,7 +538,7 @@ if (addManualCardBtn) {
   });
 }
 
-// AI Generate Flashcards Button
+// AI Generate Flashcards Button (Safely wrapped)
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
@@ -552,7 +556,7 @@ if (generateFlashcardsBtn) {
     displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>Generating flashcards quickly...</p>";
 
     const prompt = `Based on the following text, generate 5 flashcards. 
-You MUST return ONLY a valid JSON array and nothing else. Do not use any unescaped double quotes inside your string values.
+You MUST return ONLY a valid JSON array and nothing else.
 Format:
 [
   { "front": "Term or Question", "back": "Definition or Answer" }
@@ -562,7 +566,7 @@ Text:
 ${notes}`;
 
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${GROQ_API_KEY}`,
