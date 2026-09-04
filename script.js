@@ -435,7 +435,36 @@ function escapeQuotes(str) {
 }
 
 // --- FLASHCARD SYSTEM LOGIC ---
-const modeAutoBtn = document.getElementById('mode-auto-btn');
+).addEventListener('click', () => {
+    isShowingFront = !isShowingFront;
+    renderFlashcardPlayer();
+  });
+
+  document.getElementById('flip-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    isShowingFront = !isShowingFront;
+    renderFlashcardPlayer();
+  });
+
+  document.getElementById('prev-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentCardIndex > 0) {
+      currentCardIndex--;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+    }
+  });
+
+  document.getElementById('next-card-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentCardIndex < flashcardDeck.length - 1) {
+      currentCardIndex++;
+      isShowingFront = true;
+      renderFlashcardPlayer();
+      recordActivity('flashcards', 1);
+    }
+  });
+}const modeAutoBtn = document.getElementById('mode-auto-btn');
 const modeManualBtn = document.getElementById('mode-manual-btn');
 const autoContainer = document.getElementById('flashcard-auto-container');
 const manualContainer = document.getElementById('flashcard-manual-container');
@@ -477,36 +506,7 @@ function renderFlashcardPlayer() {
     </div>
   `;
 
-  displayArea.querySelector('div').addEventListener('click', () => {
-    isShowingFront = !isShowingFront;
-    renderFlashcardPlayer();
-  });
-
-  document.getElementById('flip-card-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    isShowingFront = !isShowingFront;
-    renderFlashcardPlayer();
-  });
-
-  document.getElementById('prev-card-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (currentCardIndex > 0) {
-      currentCardIndex--;
-      isShowingFront = true;
-      renderFlashcardPlayer();
-    }
-  });
-
-  document.getElementById('next-card-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (currentCardIndex < flashcardDeck.length - 1) {
-      currentCardIndex++;
-      isShowingFront = true;
-      renderFlashcardPlayer();
-      recordActivity('flashcards', 1);
-    }
-  });
-}
+  displayArea.querySelector('div'
 
 // Manual Add Flashcard Button
 const addManualCardBtn = document.getElementById('add-manual-card-btn');
@@ -562,7 +562,7 @@ Text:
 ${notes}`;
 
     try {
-      const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${GROQ_API_KEY}`,
@@ -589,7 +589,6 @@ ${notes}`;
         }
         rawContent = rawContent.trim();
 
-        // ROBUST JSON PARSER: Automatically isolates JSON array brackets if extra text slips in
         let generatedCards;
         try {
           generatedCards = JSON.parse(rawContent);
