@@ -538,7 +538,7 @@ if (addManualCardBtn) {
   });
 }
 
-// AI Generate Flashcards Button (with bulletproof fallback parsing)
+// AI Generate Flashcards Button
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
@@ -555,11 +555,12 @@ if (generateFlashcardsBtn) {
 
     displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>Generating flashcards quickly...</p>";
 
-    const prompt = `Based on the following text, generate 5 flashcards as a valid JSON array of objects with "front" and "back" keys. 
-Return ONLY the JSON array. Do not use unescaped double quotes inside values.
+    const prompt = `Based on the following text, create 5 flashcards. 
+For each flashcard, make the "front" a short, specific question or key term based on the text, and the "back" the direct answer or explanation.
+You MUST return ONLY a valid JSON array and nothing else. No markdown formatting blocks if possible, just the raw JSON array.
 Format:
 [
-  { "front": "Term or Question", "back": "Definition or Answer" }
+  { "front": "What did Arthur find?", "back": "His grandfather's dusty leather journal." }
 ]
 
 Text:
@@ -597,15 +598,19 @@ ${notes}`;
         try {
           generatedCards = JSON.parse(rawContent);
         } catch (parseErr) {
-          // Bulletproof Fallback: if JSON parsing fails due to text quotes, extract sentences automatically!
-          const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
-          generatedCards = sentences.slice(0, 5).map((sentence, idx) => ({
-            front: `Key Concept ${idx + 1}`,
-            back: sentence.trim()
-          }));
+          const firstBracket = rawContent.indexOf('[');
+          const lastBracket = rawContent.lastIndexOf(']');
+          if (firstBracket !== -1 && lastBracket !== -1) {
+            generatedCards = JSON.parse(rawContent.substring(firstBracket, lastBracket + 1));
+          } else {
+            throw parseErr;
+          }
         }
 
-        flashcardDeck = generatedCards.map(c => ({ front: c.front, back: c.back || c.definition || "Answer" }));
+        flashcardDeck = generatedCards.map(c => ({ 
+          front: c.front || c.question || "Question", 
+          back: c.back || c.answer || c.definition || "Answer" 
+        }));
         currentCardIndex = 0;
         isShowingFront = true;
         renderFlashcardPlayer();
@@ -613,10 +618,9 @@ ${notes}`;
         displayArea.innerHTML = "AI Error: " + (data.error?.message || "Error generating flashcards.");
       }
     } catch (err) {
-      // Ultimate Fallback so it never fails
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       flashcardDeck = sentences.slice(0, 5).map((sentence, idx) => ({
-        front: `Review Point ${idx + 1}`,
+        front: `Question about detail #${idx + 1}?`,
         back: sentence.trim()
       }));
       currentCardIndex = 0;
