@@ -9,8 +9,6 @@ let isShowingFront = true;
 let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
-let selectedLeftItem = null;
-let matchedPairsCount = 0;
 
 const GROQ_API_KEY = "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";
 
@@ -122,12 +120,13 @@ window.toggleScheduleVisibility = function() {
   else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
 };
 
-// --- INTERACTIVE QUIZ GENERATOR & PLAYER (RESPECTS DROPDOWN TYPE) ---
+// --- INTERACTIVE QUIZ GENERATOR & PLAYER ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
     const notesEl = document.getElementById('notes-input');
-    const activityTypeEl = document.getElementById('activity-type');
+    // Check both potential IDs for the dropdown
+    const activityTypeEl = document.getElementById('quiz-type') || document.getElementById('activity-type');
     const countEl = document.getElementById('question-count');
     const displayArea = document.getElementById('content-display-area');
 
@@ -162,13 +161,13 @@ if (generateContentBtn) {
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       currentQuizQuestions = [];
 
-      if (activityType === 'Normal Q&A / Worksheet') {
+      if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
         currentQuizQuestions.push({
           type: "worksheet",
-          questions: sentences.slice(0, count).map((s, idx) => `${idx + 1}. What is described by: "${s.trim().substring(0, 40)}..."?`),
+          questions: sentences.slice(0, count).map((s, idx) => `${idx + 1}. Explain: "${s.trim().substring(0, 45)}..."`),
           answers: sentences.slice(0, count).map((s, idx) => `${idx + 1}. ${s.trim()}`)
         });
-      } else if (activityType === 'Fill in the Blanks') {
+      } else if (activityType.includes('Blank') || activityType.includes('fill')) {
         for (let i = 0; i < Math.min(count, sentences.length); i++) {
           const words = sentences[i].trim().split(' ');
           const targetWord = words[Math.floor(words.length / 2)] || "word";
@@ -300,7 +299,7 @@ window.handleBlankSubmit = function(correct) {
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 function escapeQuotes(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
-// --- FLASHCARD SYSTEM (FIXED REAL TEXT FALLBACK) ---
+// --- FLASHCARD SYSTEM ---
 const modeAutoBtn = document.getElementById('mode-auto-btn');
 const modeManualBtn = document.getElementById('mode-manual-btn');
 const autoContainer = document.getElementById('flashcard-auto-container');
@@ -373,12 +372,16 @@ if (generateFlashcardsBtn) {
         flashcardDeck = JSON.parse(data.choices[0].message.content.trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim());
       } else { throw new Error(); }
     } catch (err) {
-      // SMART FLASHCARD FALLBACK: Uses real snippets from your notes on both sides!
+      // SMART FLASHCARD FALLBACK: Uses real text excerpts split across front and back
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
-      flashcardDeck = sentences.slice(0, 5).map((s, i) => ({
-        front: `Note segment #${i + 1}`,
-        back: s.trim()
-      }));
+      flashcardDeck = sentences.slice(0, 5).map((s, i) => {
+        const words = s.trim().split(' ');
+        const frontText = words.slice(0, Math.min(4, words.length)).join(' ') + '...';
+        return {
+          front: frontText,
+          back: s.trim()
+        };
+      });
     }
 
     currentCardIndex = 0; isShowingFront = true;
