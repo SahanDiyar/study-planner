@@ -241,7 +241,7 @@ ${notes}`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "mixtral-8x7b-32768",
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -641,7 +641,7 @@ ${notes}`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "mixtral-8x7b-32768",
           messages: [{ role: "user", content: prompt }]
         })
       });
