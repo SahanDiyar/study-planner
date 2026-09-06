@@ -634,3 +634,68 @@ ${notes}`;
 renderTasks();
 updateAnalyticsDisplay();
 renderFlashcardPlayer();
+// --- WEEKLY SCHEDULE LOGIC ---
+let currentScheduleDay = 'Sunday';
+let weeklySchedule = JSON.parse(localStorage.getItem('study_weekly_schedule')) || {
+  Sunday: Array(7).fill(''),
+  Monday: Array(7).fill(''),
+  Tuesday: Array(7).fill(''),
+  Wednesday: Array(7).fill(''),
+  Thursday: Array(7).fill('')
+};
+
+function renderScheduleInputs() {
+  const container = document.getElementById('schedule-inputs-container');
+  if (!container) return;
+
+  const lessonsForDay = weeklySchedule[currentScheduleDay] || Array(7).fill('');
+  
+  let html = `<div style="font-size: 0.9rem; font-weight: bold; color: #475569; margin-bottom: 5px;">Lessons for ${currentScheduleDay}:</div>`;
+  
+  for (let i = 0; i < 7; i++) {
+    html += `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="width: 75px; font-size: 0.85rem; font-weight: bold; color: #64748b;">Period ${i + 1}</span>
+        <input type="text" id="lesson-input-${i}" value="${lessonsForDay[i] || ''}" placeholder="Enter lesson name..." style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem;">
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+}
+
+window.switchScheduleDay = function(day) {
+  currentScheduleDay = day;
+  
+  // Update active tab styling
+  document.querySelectorAll('.day-tab-btn').forEach(btn => {
+    if (btn.getAttribute('data-day') === day) {
+      btn.style.background = '#2563eb';
+      btn.style.color = 'white';
+    } else {
+      btn.style.background = '#f1f5f9';
+      btn.style.color = '#1e293b';
+    }
+  });
+
+  renderScheduleInputs();
+};
+
+window.saveSchedule = function() {
+  const lessonsForDay = [];
+  for (let i = 0; i < 7; i++) {
+    const input = document.getElementById(`lesson-input-${i}`);
+    lessonsForDay.push(input ? input.value.trim() : '');
+  }
+
+  weeklySchedule[currentScheduleDay] = lessonsForDay;
+  localStorage.setItem('study_weekly_schedule', JSON.stringify(weeklySchedule));
+
+  const feedback = document.getElementById('schedule-save-feedback');
+  if (feedback) {
+    feedback.innerText = "Saved successfully!";
+    setTimeout(() => { feedback.innerText = ""; }, 2000);
+  }
+};
+
+// Call renderScheduleInputs on initial load if container exists
+renderScheduleInputs();
