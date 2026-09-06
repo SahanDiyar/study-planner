@@ -14,7 +14,7 @@ let userScore = 0;
 let selectedLeftItem = null;
 let matchedPairsCount = 0;
 
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = "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";
 
 // --- TASK MANAGER ---
 const addTaskBtn = document.getElementById('add-task-btn');
@@ -241,7 +241,7 @@ ${notes}`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3-8b-8192",
+          model: "llama-3.3-70b-versatile",
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -641,7 +641,7 @@ ${notes}`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3-8b-8192",
+          model: "llama-3.3-70b-versatile",
           messages: [{ role: "user", content: prompt }]
         })
       });
