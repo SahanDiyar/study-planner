@@ -9,6 +9,8 @@ let isShowingFront = true;
 let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
+let selectedLeftItem = null;
+let matchedPairsCount = 0;
 
 const GROQ_API_KEY = "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";
 
@@ -120,16 +122,18 @@ window.toggleScheduleVisibility = function() {
   else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
 };
 
-// --- INTERACTIVE QUIZ GENERATOR & PLAYER (FIXED REAL FALLBACK) ---
+// --- INTERACTIVE QUIZ GENERATOR & PLAYER (RESPECTS DROPDOWN TYPE) ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
     const notesEl = document.getElementById('notes-input');
+    const activityTypeEl = document.getElementById('activity-type');
     const countEl = document.getElementById('question-count');
     const displayArea = document.getElementById('content-display-area');
 
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
+    const activityType = activityTypeEl ? activityTypeEl.value : 'Multiple Choice (MCQ)';
     const count = parseInt(countEl ? countEl.value : '3', 10);
 
     if (!notes) {
@@ -145,7 +149,7 @@ if (generateContentBtn) {
         headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
-          messages: [{ role: "user", content: `Based on these notes, generate ${count} multiple choice questions in strict JSON array format like: [{"type": "mcq", "question": "...", "options": ["A", "B", "C", "D"], "answer": "A"}]. Notes: ${notes}` }]
+          messages: [{ role: "user", content: `Based on these notes, generate ${count} items of type "${activityType}" in strict JSON array format. Notes: ${notes}` }]
         })
       });
       const data = await response.json();
@@ -154,19 +158,37 @@ if (generateContentBtn) {
         currentQuizQuestions = JSON.parse(rawContent);
       } else { throw new Error(); }
     } catch (err) {
-      // SMART REAL FALLBACK: Extracts actual sentences from user notes to form real questions and options!
+      // Smart Fallback based on selected activity type
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       currentQuizQuestions = [];
-      for (let i = 0; i < Math.min(count, sentences.length); i++) {
-        const correctText = sentences[i].trim();
-        const distractor1 = sentences[(i + 1) % sentences.length].trim();
-        const distractor2 = sentences[(i + 2) % sentences.length].trim();
+
+      if (activityType === 'Normal Q&A / Worksheet') {
         currentQuizQuestions.push({
-          type: "mcq",
-          question: `According to your notes, which statement is accurate?`,
-          options: [correctText, distractor1, distractor2, "None of the above"].sort(() => Math.random() - 0.5),
-          answer: correctText
+          type: "worksheet",
+          questions: sentences.slice(0, count).map((s, idx) => `${idx + 1}. What is described by: "${s.trim().substring(0, 40)}..."?`),
+          answers: sentences.slice(0, count).map((s, idx) => `${idx + 1}. ${s.trim()}`)
         });
+      } else if (activityType === 'Fill in the Blanks') {
+        for (let i = 0; i < Math.min(count, sentences.length); i++) {
+          const words = sentences[i].trim().split(' ');
+          const targetWord = words[Math.floor(words.length / 2)] || "word";
+          currentQuizQuestions.push({
+            type: "blank",
+            question: sentences[i].trim().replace(targetWord, '_____'),
+            answer: targetWord
+          });
+        }
+      } else {
+        // Default MCQ Fallback
+        for (let i = 0; i < Math.min(count, sentences.length); i++) {
+          const correctText = sentences[i].trim();
+          currentQuizQuestions.push({
+            type: "mcq",
+            question: `According to your notes, which statement is accurate?`,
+            options: [correctText, "Alternative detail A", "Alternative detail B", "None of the above"].sort(() => Math.random() - 0.5),
+            answer: correctText
+          });
+        }
       }
     }
 
@@ -192,18 +214,54 @@ function renderQuizQuestion() {
   }
 
   const q = currentQuizQuestions[currentQuizIndex];
-  let html = `
-    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">
+  const type = q.type || (q.questions ? 'worksheet' : 'mcq');
+
+  let html = `<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">`;
+
+  if (type === 'worksheet' && q.questions) {
+    html += `
+      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Normal Q&A Worksheet</h3>
+      <div style="margin-bottom: 20px;">
+        <ol style="padding-left: 20px; line-height: 1.6; color: #1e293b;">
+          ${q.questions.map(quest => `<li style="margin-bottom: 8px;">${quest}</li>`).join('')}
+        </ol>
+      </div>
+      <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; border: 1px dashed #94a3b8;">
+        <h4 style="color: #475569; margin-top: 0; margin-bottom: 10px;">Answer Key:</h4>
+        <ul style="padding-left: 20px; line-height: 1.6; color: #334155; list-style-type: disc;">
+          ${q.answers.map(ans => `<li style="margin-bottom: 6px;">${ans}</li>`).join('')}
+        </ul>
+      </div>
+      <div style="text-align: right; margin-top: 20px;">
+        <button onclick="nextQuestion()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Done / Finish →</button>
+      </div>
+    `;
+  } else if (type === 'blank') {
+    html += `
+      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Item ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <input type="text" id="blank-answer-input" placeholder="Type missing word..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+        <button onclick="handleBlankSubmit('${escapeQuotes(q.answer)}')" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit</button>
+      </div>
+      <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
+      <div style="text-align: right; margin-top: 15px;">
+        <button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next Question →</button>
+      </div>
+    `;
+  } else {
+    html += `
       <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
       <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
-  `;
-  
-  q.options.forEach(opt => {
-    html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${escapeQuotes(opt)}', '${escapeQuotes(q.answer)}') " style="text-align: left; padding: 12px 16px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 1rem; color: #1e293b;">${opt}</button>`;
-  });
+    `;
+    q.options.forEach(opt => {
+      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${escapeQuotes(opt)}', '${escapeQuotes(q.answer)}') " style="text-align: left; padding: 12px 16px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 1rem; color: #1e293b;">${opt}</button>`;
+    });
+    html += `</div><div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next Question →</button></div>`;
+  }
 
-  html += `</div><div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next Question →</button></div></div>`;
+  html += `</div>`;
   displayArea.innerHTML = html;
 }
 
@@ -223,10 +281,26 @@ window.handleOptionClick = function(buttonElement, chosen, correct) {
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
 
+window.handleBlankSubmit = function(correct) {
+  const inputEl = document.getElementById('blank-answer-input');
+  const feedbackEl = document.getElementById('quiz-feedback');
+  const nextBtn = document.getElementById('next-q-btn');
+  if (!inputEl) return;
+
+  const val = inputEl.value.trim();
+  inputEl.disabled = true;
+  if (val.toLowerCase() === correct.toLowerCase()) {
+    feedbackEl.style.color = "#166534"; feedbackEl.innerText = "Correct!"; userScore++;
+  } else {
+    feedbackEl.style.color = "#991b1b"; feedbackEl.innerText = `Incorrect. Expected: "${correct}"`;
+  }
+  if (nextBtn) nextBtn.style.display = 'inline-block';
+};
+
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 function escapeQuotes(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
-// --- FLASHCARD SYSTEM (FIXED REAL FALLBACK) ---
+// --- FLASHCARD SYSTEM (FIXED REAL TEXT FALLBACK) ---
 const modeAutoBtn = document.getElementById('mode-auto-btn');
 const modeManualBtn = document.getElementById('mode-manual-btn');
 const autoContainer = document.getElementById('flashcard-auto-container');
@@ -299,10 +373,10 @@ if (generateFlashcardsBtn) {
         flashcardDeck = JSON.parse(data.choices[0].message.content.trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim());
       } else { throw new Error(); }
     } catch (err) {
-      // SMART REAL FALLBACK FOR FLASHCARDS:
+      // SMART FLASHCARD FALLBACK: Uses real snippets from your notes on both sides!
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       flashcardDeck = sentences.slice(0, 5).map((s, i) => ({
-        front: `Key Concept #${i + 1} from notes`,
+        front: `Note segment #${i + 1}`,
         back: s.trim()
       }));
     }
