@@ -84,6 +84,73 @@ function updateAnalyticsDisplay() {
   if (flashcardsEl) flashcardsEl.innerText = totalFlashcards;
 }
 
+// --- WEEKLY TABLE SCHEDULE LOGIC & TOGGLE ---
+let weeklyScheduleData = JSON.parse(localStorage.getItem('study_weekly_schedule_grid')) || {
+  Sunday: Array(7).fill(''),
+  Monday: Array(7).fill(''),
+  Tuesday: Array(7).fill(''),
+  Wednesday: Array(7).fill(''),
+  Thursday: Array(7).fill('')
+};
+
+function renderScheduleTable() {
+  const tbody = document.getElementById('schedule-table-body');
+  if (!tbody) return;
+
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+  let html = '';
+
+  for (let i = 0; i < 7; i++) {
+    html += `<tr>`;
+    html += `<td style="padding: 8px; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold; color: #475569;">Period ${i + 1}</td>`;
+    
+    days.forEach(day => {
+      const val = weeklyScheduleData[day] && weeklyScheduleData[day][i] ? weeklyScheduleData[day][i] : '';
+      html += `
+        <td style="padding: 6px; border: 1px solid #cbd5e1;">
+          <input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem; text-align: center;">
+        </td>
+      `;
+    });
+    html += `</tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+window.saveScheduleTable = function() {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+  
+  days.forEach(day => {
+    weeklyScheduleData[day] = [];
+    for (let i = 0; i < 7; i++) {
+      const input = document.querySelector(`input[data-day="${day}"][data-period="${i}"]`);
+      weeklyScheduleData[day].push(input ? input.value.trim() : '');
+    }
+  });
+
+  localStorage.setItem('study_weekly_schedule_grid', JSON.stringify(weeklyScheduleData));
+
+  const feedback = document.getElementById('schedule-save-feedback');
+  if (feedback) {
+    feedback.innerText = "Saved successfully!";
+    setTimeout(() => { feedback.innerText = ""; }, 2000);
+  }
+};
+
+window.toggleScheduleVisibility = function() {
+  const wrapper = document.getElementById('schedule-content-wrapper');
+  const btn = document.getElementById('toggle-schedule-btn');
+  if (!wrapper || !btn) return;
+
+  if (wrapper.style.display === 'none') {
+    wrapper.style.display = 'block';
+    btn.innerText = 'Hide Schedule';
+  } else {
+    wrapper.style.display = 'none';
+    btn.innerText = 'View Schedule';
+  }
+};
+
 // --- INTERACTIVE QUIZ GENERATOR & PLAYER ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
@@ -567,7 +634,7 @@ Text:
 ${notes}`;
 
     try {
-     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${GROQ_API_KEY}`,
@@ -634,58 +701,4 @@ ${notes}`;
 renderTasks();
 updateAnalyticsDisplay();
 renderFlashcardPlayer();
-// --- WEEKLY TABLE SCHEDULE LOGIC ---
-let weeklyScheduleData = JSON.parse(localStorage.getItem('study_weekly_schedule_grid')) || {
-  Sunday: Array(7).fill(''),
-  Monday: Array(7).fill(''),
-  Tuesday: Array(7).fill(''),
-  Wednesday: Array(7).fill(''),
-  Thursday: Array(7).fill('')
-};
-
-function renderScheduleTable() {
-  const tbody = document.getElementById('schedule-table-body');
-  if (!tbody) return;
-
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-  let html = '';
-
-  for (let i = 0; i < 7; i++) {
-    html += `<tr>`;
-    html += `<td style="padding: 8px; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold; color: #475569;">Period ${i + 1}</td>`;
-    
-    days.forEach(day => {
-      const val = weeklyScheduleData[day] && weeklyScheduleData[day][i] ? weeklyScheduleData[day][i] : '';
-      html += `
-        <td style="padding: 6px; border: 1px solid #cbd5e1;">
-          <input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem; text-align: center;">
-        </td>
-      `;
-    });
-    html += `</tr>`;
-  }
-  tbody.innerHTML = html;
-}
-
-window.saveScheduleTable = function() {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-  
-  days.forEach(day => {
-    weeklyScheduleData[day] = [];
-    for (let i = 0; i < 7; i++) {
-      const input = document.querySelector(`input[data-day="${day}"][data-period="${i}"]`);
-      weeklyScheduleData[day].push(input ? input.value.trim() : '');
-    }
-  });
-
-  localStorage.setItem('study_weekly_schedule_grid', JSON.stringify(weeklyScheduleData));
-
-  const feedback = document.getElementById('schedule-save-feedback');
-  if (feedback) {
-    feedback.innerText = "Saved successfully!";
-    setTimeout(() => { feedback.innerText = ""; }, 2000);
-  }
-};
-
-// Initialize table on load
 renderScheduleTable();

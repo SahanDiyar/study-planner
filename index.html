@@ -3,139 +3,137 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My AI Study Planner</title>
+  <title>My Study Planner</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body style="font-family: Arial, sans-serif; background: #f3f4f6; margin: 0; padding: 20px; color: #1f2937;">
   <div class="container" style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
     
-    <h1 style="text-align: center; color: #2563eb; margin-bottom: 5px;">My AI Study Planner</h1>
-    <p style="text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 25px;">Track your progress, view your weekly schedule, and generate interactive quizzes instantly!</p>
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div>
+        <h1 style="color: #2563eb; margin: 0; font-size: 1.8rem;">My AI Study Planner</h1>
+        <p style="color: #64748b; margin: 5px 0 0 0; font-size: 0.95rem;">Track your progress, view your weekly schedule, and generate interactive quizzes instantly!</p>
+      </div>
+    </div>
+
+    <!-- Task Adder -->
+    <div style="display: flex; gap: 10px; margin-bottom: 25px;">
+      <input type="text" id="task-input" placeholder="Add homework or study plan..." style="flex: 1; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+      <button id="add-task-btn" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Add Task</button>
+    </div>
+
+    <!-- Task List Container -->
+    <ul id="task-list" style="list-style: none; padding: 0; margin-bottom: 25px;"></ul>
+
+    <!-- Weekly School Schedule Section (With View/Hide Toggle) -->
     <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-  <h2 style="color: #1e293b; margin-top: 0; font-size: 1.25rem;">📅 Weekly Schedule (Sunday - Thursday)</h2>
-  
-  <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-  <h2 style="color: #1e293b; margin-top: 0; font-size: 1.25rem; margin-bottom: 15px;">📅 Weekly School Schedule (Sunday - Thursday)</h2>
-  <div style="overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem;">
-      <thead>
-        <tr style="background: #2563eb; color: white;">
-          <th style="padding: 10px; border: 1px solid #cbd5e1;">Period</th>
-          <th style="padding: 10px; border: 1px solid #cbd5e1;">Sunday</th>
-          <th style="padding: 10px; border: 1px solid #cbd5e1;">Monday</th>
-          <th style="padding: 10px; border: 1px solid #cbd5e1;">Tuesday</th>
-          <th style="padding: 10px; border: 1px solid #cbd5e1;">Wednesday</th>
-          <th style="padding: 10px; border: 1px solid #cbd5e1;">Thursday</th>
-        </tr>
-      </thead>
-      <tbody id="schedule-table-body">
-        <!-- Filled dynamically -->
-      </tbody>
-    </table>
-  </div>
-  <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px;">
-    <button onclick="saveScheduleTable()" style="background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Save Schedule</button>
-    <span id="schedule-save-feedback" style="font-size: 0.85rem; color: #10b981; font-weight: bold;"></span>
-  </div>
-</div>
-  <!-- 7 Lesson Inputs Container -->
-  <div id="schedule-inputs-container" style="display: flex; flex-direction: column; gap: 10px;">
-    <!-- Populated dynamically via JavaScript -->
-  </div>
-  
-  <button onclick="saveSchedule()" style="margin-top: 15px; background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Save Schedule</button>
-  <span id="schedule-save-feedback" style="margin-left: 10px; font-size: 0.85rem; color: #10b981; font-weight: bold;"></span>
-</div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="color: #1e293b; margin: 0; font-size: 1.25rem;">📅 Weekly School Schedule (Sunday - Thursday)</h2>
+        <button onclick="toggleScheduleVisibility()" id="toggle-schedule-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9rem;">Hide Schedule</button>
+      </div>
 
-    <!-- Progress Dashboard -->
-    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem; color: #1e293b;">📊 Progress Dashboard</h3>
-      <div style="display: flex; gap: 15px; text-align: center;">
-        <div style="flex: 1; background: white; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-          <div style="font-size: 0.8rem; color: #64748b;">Completed Tasks</div>
-          <div id="completed-tasks-metric" style="font-size: 1.2rem; font-weight: bold; color: #2563eb;">0</div>
+      <div id="schedule-content-wrapper">
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem;">
+            <thead>
+              <tr style="background: #2563eb; color: white;">
+                <th style="padding: 10px; border: 1px solid #cbd5e1;">Period</th>
+                <th style="padding: 10px; border: 1px solid #cbd5e1;">Sunday</th>
+                <th style="padding: 10px; border: 1px solid #cbd5e1;">Monday</th>
+                <th style="padding: 10px; border: 1px solid #cbd5e1;">Tuesday</th>
+                <th style="padding: 10px; border: 1px solid #cbd5e1;">Wednesday</th>
+                <th style="padding: 10px; border: 1px solid #cbd5e1;">Thursday</th>
+              </tr>
+            </thead>
+            <tbody id="schedule-table-body">
+              <!-- Filled dynamically -->
+            </tbody>
+          </table>
         </div>
-        <div style="flex: 1; background: white; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-          <div style="font-size: 0.8rem; color: #64748b;">Flashcards Reviewed</div>
-          <div id="flashcards-reviewed-metric" style="font-size: 1.2rem; font-weight: bold; color: #10b981;">0</div>
+        <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px;">
+          <button onclick="saveScheduleTable()" style="background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Save Schedule</button>
+          <span id="schedule-save-feedback" style="font-size: 0.85rem; color: #10b981; font-weight: bold;"></span>
         </div>
       </div>
     </div>
 
-    <!-- Task Manager -->
-    <div style="background: #ffffff; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem;">📝 Task Manager</h3>
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <input type="text" id="task-input" placeholder="Add a new study task..." style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;">
-        <button id="add-task-btn" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Add Task</button>
-      </div>
-      <ul id="task-list" style="list-style: none; padding: 0; margin: 0;"></ul>
-    </div>
-
-    <!-- AI Study Hub & Generator -->
-    <div style="background: #ffffff; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem;">🤖 AI Study Hub & Generator</h3>
-      <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 5px;">Paste Notes / Text:</label>
-      <textarea id="notes-input" rows="4" placeholder="Paste your study notes here..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box;"></textarea>
+    <!-- AI Study Hub (Quiz Generator) -->
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 20px; margin-bottom: 25px;">
+      <h2 style="color: #1e293b; margin-top: 0; font-size: 1.2rem;">AI Study Hub (NotebookLM Style)</h2>
+      <p style="color: #64748b; font-size: 0.9rem; margin-top: 0;">Paste your study notes or paragraph below to generate custom practice questions:</p>
       
-      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
-        <div style="flex: 1;">
-          <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 3px;">Activity Type:</label>
-          <select id="activity-type" style="width: 100%; padding: 7px; border: 1px solid #d1d5db; border-radius: 6px;">
+      <textarea id="notes-input" rows="5" placeholder="Paste your notes here..." style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; margin-bottom: 12px; box-sizing: border-box;"></textarea>
+      
+      <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+        <div>
+          <label style="font-size: 0.85rem; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Quiz Type:</label>
+          <select id="activity-type" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
             <option value="Multiple Choice (MCQ)">Multiple Choice (MCQ)</option>
-            <option value="Fill in the Blanks">Fill in the Blanks</option>
+            <option value="Fill in the Blank">Fill in the Blank</option>
             <option value="Matching">Matching</option>
             <option value="Normal Q&A / Worksheet">Normal Q&A / Worksheet</option>
           </select>
         </div>
-        <div style="width: 100px;">
-          <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 3px;">Count:</label>
-          <input type="number" id="question-count" value="3" min="1" max="10" style="width: 100%; padding: 7px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
+        <div>
+          <label style="font-size: 0.85rem; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Number of Questions:</label>
+          <select id="question-count" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+            <option value="3">3 Questions</option>
+            <option value="5" selected>5 Questions</option>
+            <option value="7">7 Questions</option>
+          </select>
+        </div>
+        <div style="align-self: flex-end;">
+          <button id="generate-content-btn" style="background: #7c3aed; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95rem;">Generate Quiz</button>
         </div>
       </div>
-      <button id="generate-content-btn" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;">Generate Content</button>
-      
-      <div id="content-display-area" style="margin-top: 15px;"></div>
+
+      <div id="content-display-area"></div>
     </div>
 
-    <!-- FLASHCARD SECTION -->
-    <div style="background: #ffffff; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem;">📚 Flashcard Studio</h3>
-      
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <button id="mode-auto-btn" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">AI Generate</button>
-        <button id="mode-manual-btn" style="background: #e5e7eb; color: #374151; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">Manual Add</button>
+    <!-- Flashcard Studio -->
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 20px; margin-bottom: 25px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="color: #1e293b; margin: 0; font-size: 1.2rem;">Flashcard Studio</h2>
+        <div style="display: flex; gap: 8px;">
+          <button id="mode-auto-btn" style="background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">AI Generate</button>
+          <button id="mode-manual-btn" style="background: #e2e8f0; color: #1e293b; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">Manual Add</button>
+        </div>
       </div>
 
       <!-- AI Mode Container -->
       <div id="flashcard-auto-container">
-        <textarea id="flashcard-notes" rows="3" placeholder="Paste text to auto-generate flashcards..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; margin-bottom: 10px;"></textarea>
-        <button id="generate-flashcards-btn" style="background: #8b5cf6; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Generate Flashcards</button>
+        <textarea id="flashcard-notes" rows="4" placeholder="Paste text to generate flashcards..." style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; margin-bottom: 10px; box-sizing: border-box;"></textarea>
+        <button id="generate-flashcards-btn" style="background: #7c3aed; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9rem; margin-bottom: 15px;">Generate Flashcards</button>
       </div>
 
-      <!-- Manual Mode Container (Hidden by default) -->
-      <div id="flashcard-manual-container" style="display: none;">
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-          <input type="text" id="manual-front" placeholder="Front (Term / Question)" style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem;">
-          <input type="text" id="manual-back" placeholder="Back (Definition / Answer)" style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem;">
-        </div>
-        <button id="add-manual-card-btn" style="background: #10b981; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Add Card</button>
+      <!-- Manual Mode Container (Initially Hidden) -->
+      <div id="flashcard-manual-container" style="display: none; margin-bottom: 15px;">
+        <input type="text" id="manual-front" placeholder="Card Front (Question/Term)" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-sizing: border-box;">
+        <input type="text" id="manual-back" placeholder="Card Back (Answer/Definition)" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-sizing: border-box;">
+        <button id="add-manual-card-btn" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9rem;">Add Card to Deck</button>
       </div>
 
-      <!-- Flashcard Player Display Area -->
-      <div id="flashcard-display-area" style="margin-top: 20px;">
-        <p style="color: #6b7280; font-size: 0.9rem; text-align: center;">No flashcards in the deck yet. Generate or create some above!</p>
-      </div>
+      <!-- Flashcard Player Display -->
+      <div id="flashcard-display-area"></div>
     </div>
 
-    <!-- FOOTER LINK BACK -->
-    <div style="text-align: center; margin-top: 20px; font-size: 0.85rem; color: #6b7280;">
-      Click <a href="[https://sahandiyar.github.io/study-planner/](https://sahandiyar.github.io/study-planner/)" target="_blank" style="color: #3b82f6; text-decoration: underline;">here</a> to visit my website.
+    <!-- Progress Dashboard -->
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 20px;">
+      <h2 style="color: #1e293b; margin-top: 0; font-size: 1.2rem;">Progress Dashboard</h2>
+      <div style="display: flex; gap: 20px;">
+        <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; flex: 1; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: bold; color: #2563eb;" id="completed-tasks-metric">0</div>
+          <div style="font-size: 0.85rem; color: #64748b;">Completed Tasks</div>
+        </div>
+        <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; flex: 1; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: bold; color: #7c3aed;" id="flashcards-reviewed-metric">0</div>
+          <div style="font-size: 0.85rem; color: #64748b;">Flashcards Reviewed</div>
+        </div>
+      </div>
     </div>
 
   </div>
-
-  <!-- Link your JavaScript file -->
   <script src="script.js"></script>
 </body>
 </html>
