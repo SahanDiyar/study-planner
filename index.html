@@ -14,15 +14,30 @@
     <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
   <h2 style="color: #1e293b; margin-top: 0; font-size: 1.25rem;">📅 Weekly Schedule (Sunday - Thursday)</h2>
   
-  <!-- Day Selector Tabs -->
-  <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;" id="schedule-day-tabs">
-    <button onclick="switchScheduleDay('Sunday')" class="day-tab-btn" data-day="Sunday" style="padding: 8px 14px; border: 1px solid #cbd5e1; background: #2563eb; color: white; border-radius: 6px; cursor: pointer; font-weight: bold;">Sunday</button>
-    <button onclick="switchScheduleDay('Monday')" class="day-tab-btn" data-day="Monday" style="padding: 8px 14px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #1e293b; border-radius: 6px; cursor: pointer; font-weight: bold;">Monday</button>
-    <button onclick="switchScheduleDay('Tuesday')" class="day-tab-btn" data-day="Tuesday" style="padding: 8px 14px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #1e293b; border-radius: 6px; cursor: pointer; font-weight: bold;">Tuesday</button>
-    <button onclick="switchScheduleDay('Wednesday')" class="day-tab-btn" data-day="Wednesday" style="padding: 8px 14px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #1e293b; border-radius: 6px; cursor: pointer; font-weight: bold;">Wednesday</button>
-    <button onclick="switchScheduleDay('Thursday')" class="day-tab-btn" data-day="Thursday" style="padding: 8px 14px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #1e293b; border-radius: 6px; cursor: pointer; font-weight: bold;">Thursday</button>
+  <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+  <h2 style="color: #1e293b; margin-top: 0; font-size: 1.25rem; margin-bottom: 15px;">📅 Weekly School Schedule (Sunday - Thursday)</h2>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem;">
+      <thead>
+        <tr style="background: #2563eb; color: white;">
+          <th style="padding: 10px; border: 1px solid #cbd5e1;">Period</th>
+          <th style="padding: 10px; border: 1px solid #cbd5e1;">Sunday</th>
+          <th style="padding: 10px; border: 1px solid #cbd5e1;">Monday</th>
+          <th style="padding: 10px; border: 1px solid #cbd5e1;">Tuesday</th>
+          <th style="padding: 10px; border: 1px solid #cbd5e1;">Wednesday</th>
+          <th style="padding: 10px; border: 1px solid #cbd5e1;">Thursday</th>
+        </tr>
+      </thead>
+      <tbody id="schedule-table-body">
+        <!-- Filled dynamically -->
+      </tbody>
+    </table>
   </div>
-
+  <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px;">
+    <button onclick="saveScheduleTable()" style="background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Save Schedule</button>
+    <span id="schedule-save-feedback" style="font-size: 0.85rem; color: #10b981; font-weight: bold;"></span>
+  </div>
+</div>
   <!-- 7 Lesson Inputs Container -->
   <div id="schedule-inputs-container" style="display: flex; flex-direction: column; gap: 10px;">
     <!-- Populated dynamically via JavaScript -->

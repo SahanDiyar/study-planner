@@ -634,9 +634,8 @@ ${notes}`;
 renderTasks();
 updateAnalyticsDisplay();
 renderFlashcardPlayer();
-// --- WEEKLY SCHEDULE LOGIC ---
-let currentScheduleDay = 'Sunday';
-let weeklySchedule = JSON.parse(localStorage.getItem('study_weekly_schedule')) || {
+// --- WEEKLY TABLE SCHEDULE LOGIC ---
+let weeklyScheduleData = JSON.parse(localStorage.getItem('study_weekly_schedule_grid')) || {
   Sunday: Array(7).fill(''),
   Monday: Array(7).fill(''),
   Tuesday: Array(7).fill(''),
@@ -644,51 +643,42 @@ let weeklySchedule = JSON.parse(localStorage.getItem('study_weekly_schedule')) |
   Thursday: Array(7).fill('')
 };
 
-function renderScheduleInputs() {
-  const container = document.getElementById('schedule-inputs-container');
-  if (!container) return;
+function renderScheduleTable() {
+  const tbody = document.getElementById('schedule-table-body');
+  if (!tbody) return;
 
-  const lessonsForDay = weeklySchedule[currentScheduleDay] || Array(7).fill('');
-  
-  let html = `<div style="font-size: 0.9rem; font-weight: bold; color: #475569; margin-bottom: 5px;">Lessons for ${currentScheduleDay}:</div>`;
-  
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+  let html = '';
+
   for (let i = 0; i < 7; i++) {
-    html += `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="width: 75px; font-size: 0.85rem; font-weight: bold; color: #64748b;">Period ${i + 1}</span>
-        <input type="text" id="lesson-input-${i}" value="${lessonsForDay[i] || ''}" placeholder="Enter lesson name..." style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem;">
-      </div>
-    `;
+    html += `<tr>`;
+    html += `<td style="padding: 8px; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold; color: #475569;">Period ${i + 1}</td>`;
+    
+    days.forEach(day => {
+      const val = weeklyScheduleData[day] && weeklyScheduleData[day][i] ? weeklyScheduleData[day][i] : '';
+      html += `
+        <td style="padding: 6px; border: 1px solid #cbd5e1;">
+          <input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem; text-align: center;">
+        </td>
+      `;
+    });
+    html += `</tr>`;
   }
-  container.innerHTML = html;
+  tbody.innerHTML = html;
 }
 
-window.switchScheduleDay = function(day) {
-  currentScheduleDay = day;
+window.saveScheduleTable = function() {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
   
-  // Update active tab styling
-  document.querySelectorAll('.day-tab-btn').forEach(btn => {
-    if (btn.getAttribute('data-day') === day) {
-      btn.style.background = '#2563eb';
-      btn.style.color = 'white';
-    } else {
-      btn.style.background = '#f1f5f9';
-      btn.style.color = '#1e293b';
+  days.forEach(day => {
+    weeklyScheduleData[day] = [];
+    for (let i = 0; i < 7; i++) {
+      const input = document.querySelector(`input[data-day="${day}"][data-period="${i}"]`);
+      weeklyScheduleData[day].push(input ? input.value.trim() : '');
     }
   });
 
-  renderScheduleInputs();
-};
-
-window.saveSchedule = function() {
-  const lessonsForDay = [];
-  for (let i = 0; i < 7; i++) {
-    const input = document.getElementById(`lesson-input-${i}`);
-    lessonsForDay.push(input ? input.value.trim() : '');
-  }
-
-  weeklySchedule[currentScheduleDay] = lessonsForDay;
-  localStorage.setItem('study_weekly_schedule', JSON.stringify(weeklySchedule));
+  localStorage.setItem('study_weekly_schedule_grid', JSON.stringify(weeklyScheduleData));
 
   const feedback = document.getElementById('schedule-save-feedback');
   if (feedback) {
@@ -697,5 +687,5 @@ window.saveSchedule = function() {
   }
 };
 
-// Call renderScheduleInputs on initial load if container exists
-renderScheduleInputs();
+// Initialize table on load
+renderScheduleTable();
