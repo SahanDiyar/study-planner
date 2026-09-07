@@ -125,7 +125,6 @@ const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
     const notesEl = document.getElementById('notes-input');
-    // Check both potential IDs for the dropdown
     const activityTypeEl = document.getElementById('quiz-type') || document.getElementById('activity-type');
     const countEl = document.getElementById('question-count');
     const displayArea = document.getElementById('content-display-area');
@@ -148,20 +147,28 @@ if (generateContentBtn) {
         headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
-          messages: [{ role: "user", content: `Based on these notes, generate ${count} items of type "${activityType}" in strict JSON array format. Notes: ${notes}` }]
+          messages: [{ role: "user", content: `Based on these notes, generate ${count} items of type "${activityType}" in strict JSON format. If matching, return [{"type": "matching", "pairs": [{"term": "...", "definition": "..."}, ...]}]. Notes: ${notes}` }]
         })
       });
       const data = await response.json();
       if (data.choices) {
         let rawContent = data.choices[0].message.content.trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-        currentQuizQuestions = JSON.parse(rawContent);
+        const parsed = JSON.parse(rawContent);
+        currentQuizQuestions = Array.isArray(parsed) ? parsed : [parsed];
       } else { throw new Error(); }
     } catch (err) {
-      // Smart Fallback based on selected activity type
+      // Smart Fallback Handling
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       currentQuizQuestions = [];
 
-      if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
+      if (activityType.toLowerCase().includes('match')) {
+        const pairs = sentences.slice(0, count).map(s => {
+          const words = s.trim().split(' ');
+          const term = words.slice(0, Math.min(3, words.length)).join(' ');
+          return { term: term, definition: s.trim() };
+        });
+        currentQuizQuestions = [{ type: "matching", pairs: pairs }];
+      } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
         currentQuizQuestions.push({
           type: "worksheet",
           questions: sentences.slice(0, count).map((s, idx) => `${idx + 1}. Explain: "${s.trim().substring(0, 45)}..."`),
@@ -178,7 +185,6 @@ if (generateContentBtn) {
           });
         }
       } else {
-        // Default MCQ Fallback
         for (let i = 0; i < Math.min(count, sentences.length); i++) {
           const correctText = sentences[i].trim();
           currentQuizQuestions.push({
@@ -205,7 +211,7 @@ function renderQuizQuestion() {
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `
       <div style="background: #f8fafc; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid #cbd5e1;">
-        <h3 style="color: #2563eb; margin-top: 0;">Activity Completed! 🎉 Score: ${userScore}/${currentQuizQuestions.length}</h3>
+        <h3 style="color: #2563eb; margin-top: 0;">Activity Completed! 🎉 Score: ${userScore}/${currentQuizQuestions.length || 1}</h3>
         <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Start New Activity</button>
       </div>
     `;
@@ -213,11 +219,36 @@ function renderQuizQuestion() {
   }
 
   const q = currentQuizQuestions[currentQuizIndex];
-  const type = q.type || (q.questions ? 'worksheet' : 'mcq');
+  const type = q.type || (q.questions ? 'worksheet' : (q.pairs ? 'matching' : 'mcq'));
 
   let html = `<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">`;
 
-  if (type === 'worksheet' && q.questions) {
+  if (type === 'matching' && q.pairs) {
+    const shuffledDefs = [...q.pairs].map(p => p.definition).sort(() => Math.random() - 0.5);
+    html += `
+      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Matching Activity</h3>
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Select the correct definition for each term below:</p>
+      <div style="display: flex; flex-direction: column; gap: 12px;" id="matching-container">
+    `;
+    q.pairs.forEach((pair, idx) => {
+      html += `
+        <div style="display: flex; flex-direction: column; background: white; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+          <div style="font-weight: bold; color: #1e293b; margin-bottom: 6px;">Term: ${pair.term}</div>
+          <select data-correct="${escapeQuotes(pair.definition)}" class="match-select" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; color: #334155;">
+            <option value="">-- Select matching definition --</option>
+            ${shuffledDefs.map(def => `<option value="${escapeQuotes(def)}">${def}</option>`).join('')}
+          </select>
+        </div>
+      `;
+    });
+    html += `
+      </div>
+      <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
+      <div style="text-align: right; margin-top: 20px;">
+        <button onclick="handleMatchingSubmit()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Matching</button>
+      </div>
+    `;
+  } else if (type === 'worksheet' && q.questions) {
     html += `
       <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Normal Q&A Worksheet</h3>
       <div style="margin-bottom: 20px;">
@@ -296,6 +327,39 @@ window.handleBlankSubmit = function(correct) {
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
 
+window.handleMatchingSubmit = function() {
+  const selects = document.querySelectorAll('.match-select');
+  const feedbackEl = document.getElementById('quiz-feedback');
+  let correctCount = 0;
+
+  selects.forEach(sel => {
+    const chosen = sel.value;
+    const correct = sel.getAttribute('data-correct');
+    if (chosen.trim() === correct.trim()) {
+      correctCount++;
+      sel.style.borderColor = "#10b981";
+      sel.style.background = "#dcfce7";
+    } else {
+      sel.style.borderColor = "#ef4444";
+      sel.style.background = "#fee2e2";
+    }
+    sel.disabled = true;
+  });
+
+  userScore = correctCount;
+  if (feedbackEl) {
+    feedbackEl.style.color = correctCount === selects.length ? "#166534" : "#991b1b";
+    feedbackEl.innerText = `You matched ${correctCount} out of ${selects.length} correctly!`;
+  }
+  
+  // Add a finish button after submitting matching
+  const submitBtn = document.querySelector('#content-display-area button');
+  if (submitBtn) {
+    submitBtn.innerText = "Finish Activity →";
+    submitBtn.onclick = () => { currentQuizIndex++; renderQuizQuestion(); };
+  }
+};
+
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 function escapeQuotes(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
@@ -372,15 +436,11 @@ if (generateFlashcardsBtn) {
         flashcardDeck = JSON.parse(data.choices[0].message.content.trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim());
       } else { throw new Error(); }
     } catch (err) {
-      // SMART FLASHCARD FALLBACK: Uses real text excerpts split across front and back
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       flashcardDeck = sentences.slice(0, 5).map((s, i) => {
         const words = s.trim().split(' ');
         const frontText = words.slice(0, Math.min(4, words.length)).join(' ') + '...';
-        return {
-          front: frontText,
-          back: s.trim()
-        };
+        return { front: frontText, back: s.trim() };
       });
     }
 
