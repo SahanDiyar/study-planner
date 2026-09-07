@@ -10,6 +10,10 @@ let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
 
+// Matching State Variables
+let selectedTerm = null;
+let userMatches = {};
+
 const GROQ_API_KEY = "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";
 
 // --- TASK MANAGER ---
@@ -184,7 +188,6 @@ if (generateContentBtn) {
           });
         }
       } else {
-        // Smart MCQ Fallback using other real sentences as distractors
         for (let i = 0; i < Math.min(count, sentences.length); i++) {
           const correctText = sentences[i].trim();
           const otherSentences = sentences.filter((_, idx) => idx !== i).map(s => s.trim());
@@ -229,28 +232,27 @@ function renderQuizQuestion() {
   let html = `<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">`;
 
   if (type === 'matching' && q.pairs) {
+    selectedTerm = null;
+    userMatches = {};
+    const shuffledDefs = [...q.pairs].map(p => p.definition).sort(() => Math.random() - 0.5);
     const shuffledTerms = [...q.pairs].map(p => p.term).sort(() => Math.random() - 0.5);
+
     html += `
       <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Matching Activity</h3>
-      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Pair each definition with its correct term:</p>
-      <div style="display: flex; flex-direction: column; gap: 12px;" id="matching-container">
-    `;
-    q.pairs.forEach((pair, idx) => {
-      html += `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; background: white; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
-          <div style="color: #334155; font-size: 0.9rem;"><strong>Definition ${idx + 1}:</strong> ${pair.definition}</div>
-          <select data-correct="${escapeQuotes(pair.term)}" class="match-select" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; color: #1e293b;">
-            <option value="">-- Choose Term --</option>
-            ${shuffledTerms.map(t => `<option value="${escapeQuotes(t)}">${t}</option>`).join('')}
-          </select>
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Click a term on the left, then click its matching definition on the right:</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="matching-board">
+        <div style="display: flex; flex-direction: column; gap: 10px;" id="terms-column">
+          <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Terms</h4>
+          ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, '${escapeQuotes(t)}')" class="match-term-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 500; color: #1e293b; transition: all 0.2s;">${t}</div>`).join('')}
         </div>
-      `;
-    });
-    html += `
+        <div style="display: flex; flex-direction: column; gap: 10px;" id="defs-column">
+          <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Definitions</h4>
+          ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, '${escapeQuotes(d)}')" class="match-def-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #334155; transition: all 0.2s;">${d}</div>`).join('')}
+        </div>
       </div>
       <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
       <div style="text-align: right; margin-top: 20px;">
-        <button onclick="handleMatchingSubmit()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Matching</button>
+        <button onclick="handleMatchingSubmit(${JSON.stringify(q.pairs).replace(/"/g, '&quot;')})" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Matching</button>
       </div>
     `;
   } else if (type === 'worksheet' && q.questions) {
@@ -300,6 +302,55 @@ function renderQuizQuestion() {
   displayArea.innerHTML = html;
 }
 
+window.selectMatchingTerm = function(element, term) {
+  document.querySelectorAll('.match-term-card').forEach(card => card.style.borderColor = '#cbd5e1');
+  element.style.borderColor = '#2563eb';
+  element.style.background = '#eff6ff';
+  selectedTerm = term;
+};
+
+window.selectMatchingDef = function(element, definition) {
+  if (!selectedTerm) {
+    alert("Please select a Term on the left first!");
+    return;
+  }
+  userMatches[selectedTerm] = definition;
+  element.style.borderColor = '#10b981';
+  element.style.background = '#dcfce7';
+  
+  // Reset term highlight
+  document.querySelectorAll('.match-term-card').forEach(card => {
+    if (card.innerText.trim() === selectedTerm) {
+      card.style.borderColor = '#10b981';
+      card.style.background = '#dcfce7';
+    }
+  });
+  selectedTerm = null;
+};
+
+window.handleMatchingSubmit = function(pairs) {
+  const feedbackEl = document.getElementById('quiz-feedback');
+  let correctCount = 0;
+
+  pairs.forEach(pair => {
+    if (userMatches[pair.term] && userMatches[pair.term].trim() === pair.definition.trim()) {
+      correctCount++;
+    }
+  });
+
+  userScore = correctCount;
+  if (feedbackEl) {
+    feedbackEl.style.color = correctCount === pairs.length ? "#166534" : "#991b1b";
+    feedbackEl.innerText = `You correctly matched ${correctCount} out of ${pairs.length} pairs!`;
+  }
+
+  const submitBtn = document.querySelector('#content-display-area button');
+  if (submitBtn) {
+    submitBtn.innerText = "Finish Activity →";
+    submitBtn.onclick = () => { currentQuizIndex++; renderQuizQuestion(); };
+  }
+};
+
 window.handleOptionClick = function(buttonElement, chosen, correct) {
   document.querySelectorAll('.quiz-option-btn').forEach(btn => btn.disabled = true);
   const feedbackEl = document.getElementById('quiz-feedback');
@@ -330,38 +381,6 @@ window.handleBlankSubmit = function(correct) {
     feedbackEl.style.color = "#991b1b"; feedbackEl.innerText = `Incorrect. Expected: "${correct}"`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
-};
-
-window.handleMatchingSubmit = function() {
-  const selects = document.querySelectorAll('.match-select');
-  const feedbackEl = document.getElementById('quiz-feedback');
-  let correctCount = 0;
-
-  selects.forEach(sel => {
-    const chosen = sel.value;
-    const correct = sel.getAttribute('data-correct');
-    if (chosen.trim() === correct.trim()) {
-      correctCount++;
-      sel.style.borderColor = "#10b981";
-      sel.style.background = "#dcfce7";
-    } else {
-      sel.style.borderColor = "#ef4444";
-      sel.style.background = "#fee2e2";
-    }
-    sel.disabled = true;
-  });
-
-  userScore = correctCount;
-  if (feedbackEl) {
-    feedbackEl.style.color = correctCount === selects.length ? "#166534" : "#991b1b";
-    feedbackEl.innerText = `You matched ${correctCount} out of ${selects.length} correctly!`;
-  }
-  
-  const submitBtn = document.querySelector('#content-display-area button');
-  if (submitBtn) {
-    submitBtn.innerText = "Finish Activity →";
-    submitBtn.onclick = () => { currentQuizIndex++; renderQuizQuestion(); };
-  }
 };
 
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
