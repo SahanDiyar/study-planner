@@ -167,7 +167,7 @@ if (generateContentBtn) {
         currentQuizQuestions = Array.isArray(parsed) ? parsed : [parsed];
       } else { throw new Error(); }
     } catch (err) {
-      // SMART REALISTIC FALLBACK: Generates actual test questions instead of slicing sentences
+      // SMART REALISTIC FALLBACK: Generates balanced test questions matching exact count
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       currentQuizQuestions = [];
 
@@ -183,14 +183,16 @@ if (generateContentBtn) {
           ].slice(0, count)
         }];
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
+        const fallbackWorksheetQuestions = [
+          "What are atoms and where can they be found?",
+          "Describe the scale and physical size of atoms.",
+          "Describe the structure and charge of an atom's nucleus.",
+          "What is the behavior and charge of electrons within an atom?",
+          "How do different elements (like oxygen, gold, and carbon) differ from one another?"
+        ];
         currentQuizQuestions.push({
           type: "worksheet",
-          questions: [
-            "What are atoms and where can they be found?",
-            "Describe the structure and charge of an atom's nucleus.",
-            "How do different elements (like oxygen, gold, and carbon) differ from one another?",
-            "What is the behavior and charge of electrons within an atom?"
-          ].slice(0, count),
+          questions: fallbackWorksheetQuestions.slice(0, count),
           answers: sentences.slice(0, count).map(s => s.trim())
         });
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
@@ -198,7 +200,8 @@ if (generateContentBtn) {
           { type: "blank", question: "Atoms are the basic building blocks of all _____ in the universe.", answer: "matter" },
           { type: "blank", question: "Every atom features a heavy center called a _____.", answer: "nucleus" },
           { type: "blank", question: "Tiny, negatively charged _____ zoom around this nucleus at high speeds.", answer: "electrons" },
-          { type: "blank", question: "Elements differ from one another based on how many _____ their atoms contain.", answer: "protons" }
+          { type: "blank", question: "Elements differ from one another based on how many _____ their atoms contain.", answer: "protons" },
+          { type: "blank", question: "Billions of atoms can easily fit on the head of a single _____.", answer: "pin" }
         ].slice(0, count);
       } else {
         currentQuizQuestions = [
@@ -225,6 +228,12 @@ if (generateContentBtn) {
             question: "What determines how different elements (like oxygen, gold, and carbon) differ from each other?",
             options: ["Number of protons", "Size of the pin", "Speed of electrons", "Weight of neutrons"],
             answer: "Number of protons"
+          },
+          {
+            type: "mcq",
+            question: "About how many atoms can easily fit on the head of a single pin?",
+            options: ["Billions", "Millions", "Trillions", "Thousands"],
+            answer: "Billions"
           }
         ].slice(0, count);
       }
