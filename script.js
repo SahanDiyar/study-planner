@@ -166,9 +166,20 @@ if (generateContentBtn) {
 
       if (activityType.toLowerCase().includes('match')) {
         const pairs = sentences.slice(0, count).map(s => {
-          const words = s.trim().split(' ');
-          const term = words.slice(0, Math.min(3, words.length)).join(' ');
-          return { term: term, definition: s.trim() };
+          const text = s.trim();
+          let term = "";
+          let definition = text;
+          
+          // Better term extraction: look for colon or use first 2-4 meaningful words
+          if (text.includes(':')) {
+            const parts = text.split(':');
+            term = parts[0].trim();
+            definition = parts.slice(1).join(':').trim();
+          } else {
+            const words = text.split(' ');
+            term = words.slice(0, Math.min(3, words.length)).join(' ');
+          }
+          return { term: term, definition: definition };
         });
         currentQuizQuestions = [{ type: "matching", pairs: pairs }];
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
@@ -243,16 +254,16 @@ function renderQuizQuestion() {
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="matching-board">
         <div style="display: flex; flex-direction: column; gap: 10px;" id="terms-column">
           <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Terms</h4>
-          ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, '${escapeQuotes(t)}')" class="match-term-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 500; color: #1e293b; transition: all 0.2s;">${t}</div>`).join('')}
+          ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, '${escapeQuotes(t)}')" data-term="${escapeQuotes(t)}" class="match-term-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 500; color: #1e293b; transition: all 0.2s;">${t}</div>`).join('')}
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;" id="defs-column">
           <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Definitions</h4>
-          ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, '${escapeQuotes(d)}')" class="match-def-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #334155; transition: all 0.2s;">${d}</div>`).join('')}
+          ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, '${escapeQuotes(d)}')" data-def="${escapeQuotes(d)}" class="match-def-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #334155; transition: all 0.2s;">${d}</div>`).join('')}
         </div>
       </div>
       <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
       <div style="text-align: right; margin-top: 20px;">
-        <button onclick="handleMatchingSubmit(${JSON.stringify(q.pairs).replace(/"/g, '&quot;')})" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Matching</button>
+        <button id="matching-submit-btn" onclick="handleMatchingSubmit(${JSON.stringify(q.pairs).replace(/"/g, '&quot;')})" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Matching</button>
       </div>
     `;
   } else if (type === 'worksheet' && q.questions) {
@@ -303,7 +314,9 @@ function renderQuizQuestion() {
 }
 
 window.selectMatchingTerm = function(element, term) {
-  document.querySelectorAll('.match-term-card').forEach(card => card.style.borderColor = '#cbd5e1');
+  document.querySelectorAll('.match-term-card').forEach(card => {
+    if(!card.classList.contains('matched-success')) card.style.borderColor = '#cbd5e1';
+  });
   element.style.borderColor = '#2563eb';
   element.style.background = '#eff6ff';
   selectedTerm = term;
@@ -315,14 +328,16 @@ window.selectMatchingDef = function(element, definition) {
     return;
   }
   userMatches[selectedTerm] = definition;
-  element.style.borderColor = '#10b981';
-  element.style.background = '#dcfce7';
   
-  // Reset term highlight
+  // Highlight definition
+  element.style.borderColor = '#3b82f6';
+  element.style.background = '#eff6ff';
+  
+  // Highlight matching term card as linked
   document.querySelectorAll('.match-term-card').forEach(card => {
-    if (card.innerText.trim() === selectedTerm) {
-      card.style.borderColor = '#10b981';
-      card.style.background = '#dcfce7';
+    if (card.getAttribute('data-term') === selectedTerm) {
+      card.style.borderColor = '#3b82f6';
+      card.style.background = '#eff6ff';
     }
   });
   selectedTerm = null;
@@ -332,9 +347,50 @@ window.handleMatchingSubmit = function(pairs) {
   const feedbackEl = document.getElementById('quiz-feedback');
   let correctCount = 0;
 
-  pairs.forEach(pair => {
-    if (userMatches[pair.term] && userMatches[pair.term].trim() === pair.definition.trim()) {
+  // Map definitions back to their correct terms for validation lookup
+  const correctMap = {};
+  pairs.forEach(p => { correctMap[p.term] = p.definition.trim(); });
+
+  // Style each card based on whether it was paired correctly or incorrectly
+  document.querySelectorAll('.match-term-card').forEach(termCard => {
+    const term = termCard.getAttribute('data-term');
+    const userChosenDef = userMatches[term];
+
+    if (!userChosenDef) {
+      termCard.style.borderColor = '#cbd5e1';
+      termCard.style.background = '#f1f5f9';
+      return;
+    }
+
+    if (userChosenDef.trim() === correctMap[term]) {
       correctCount++;
+      termCard.style.borderColor = '#10b981';
+      termCard.style.background = '#dcfce7';
+      termCard.innerHTML = `✅ ${term}`;
+    } else {
+      termCard.style.borderColor = '#ef4444';
+      termCard.style.background = '#fee2e2';
+      termCard.innerHTML = `❌ ${term}`;
+    }
+  });
+
+  document.querySelectorAll('.match-def-card').forEach(defCard => {
+    const def = defCard.getAttribute('data-def').trim();
+    // Find which term was matched to this definition
+    const matchedTerm = Object.keys(userMatches).find(t => userMatches[t].trim() === def);
+    
+    if (!matchedTerm) {
+      defCard.style.borderColor = '#cbd5e1';
+      defCard.style.background = '#f1f5f9';
+      return;
+    }
+
+    if (correctMap[matchedTerm] === def) {
+      defCard.style.borderColor = '#10b981';
+      defCard.style.background = '#dcfce7';
+    } else {
+      defCard.style.borderColor = '#ef4444';
+      defCard.style.background = '#fee2e2';
     }
   });
 
@@ -344,7 +400,7 @@ window.handleMatchingSubmit = function(pairs) {
     feedbackEl.innerText = `You correctly matched ${correctCount} out of ${pairs.length} pairs!`;
   }
 
-  const submitBtn = document.querySelector('#content-display-area button');
+  const submitBtn = document.getElementById('matching-submit-btn');
   if (submitBtn) {
     submitBtn.innerText = "Finish Activity →";
     submitBtn.onclick = () => { currentQuizIndex++; renderQuizQuestion(); };
