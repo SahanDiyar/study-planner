@@ -157,7 +157,6 @@ if (generateContentBtn) {
         currentQuizQuestions = Array.isArray(parsed) ? parsed : [parsed];
       } else { throw new Error(); }
     } catch (err) {
-      // Smart Fallback Handling
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       currentQuizQuestions = [];
 
@@ -171,8 +170,8 @@ if (generateContentBtn) {
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
         currentQuizQuestions.push({
           type: "worksheet",
-          questions: sentences.slice(0, count).map((s, idx) => `${idx + 1}. Explain: "${s.trim().substring(0, 45)}..."`),
-          answers: sentences.slice(0, count).map((s, idx) => `${idx + 1}. ${s.trim()}`)
+          questions: sentences.slice(0, count).map(s => `Explain: "${s.trim().substring(0, 45)}..."`),
+          answers: sentences.slice(0, count).map(s => s.trim())
         });
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
         for (let i = 0; i < Math.min(count, sentences.length); i++) {
@@ -185,12 +184,18 @@ if (generateContentBtn) {
           });
         }
       } else {
+        // Smart MCQ Fallback using other real sentences as distractors
         for (let i = 0; i < Math.min(count, sentences.length); i++) {
           const correctText = sentences[i].trim();
+          const otherSentences = sentences.filter((_, idx) => idx !== i).map(s => s.trim());
+          const distractors = otherSentences.slice(0, 3);
+          while (distractors.length < 3) {
+            distractors.push("None of the above");
+          }
           currentQuizQuestions.push({
             type: "mcq",
             question: `According to your notes, which statement is accurate?`,
-            options: [correctText, "Alternative detail A", "Alternative detail B", "None of the above"].sort(() => Math.random() - 0.5),
+            options: [correctText, ...distractors].sort(() => Math.random() - 0.5),
             answer: correctText
           });
         }
@@ -224,19 +229,19 @@ function renderQuizQuestion() {
   let html = `<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">`;
 
   if (type === 'matching' && q.pairs) {
-    const shuffledDefs = [...q.pairs].map(p => p.definition).sort(() => Math.random() - 0.5);
+    const shuffledTerms = [...q.pairs].map(p => p.term).sort(() => Math.random() - 0.5);
     html += `
       <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Matching Activity</h3>
-      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Select the correct definition for each term below:</p>
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Pair each definition with its correct term:</p>
       <div style="display: flex; flex-direction: column; gap: 12px;" id="matching-container">
     `;
     q.pairs.forEach((pair, idx) => {
       html += `
-        <div style="display: flex; flex-direction: column; background: white; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
-          <div style="font-weight: bold; color: #1e293b; margin-bottom: 6px;">Term: ${pair.term}</div>
-          <select data-correct="${escapeQuotes(pair.definition)}" class="match-select" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; color: #334155;">
-            <option value="">-- Select matching definition --</option>
-            ${shuffledDefs.map(def => `<option value="${escapeQuotes(def)}">${def}</option>`).join('')}
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; background: white; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+          <div style="color: #334155; font-size: 0.9rem;"><strong>Definition ${idx + 1}:</strong> ${pair.definition}</div>
+          <select data-correct="${escapeQuotes(pair.term)}" class="match-select" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; color: #1e293b;">
+            <option value="">-- Choose Term --</option>
+            ${shuffledTerms.map(t => `<option value="${escapeQuotes(t)}">${t}</option>`).join('')}
           </select>
         </div>
       `;
@@ -352,7 +357,6 @@ window.handleMatchingSubmit = function() {
     feedbackEl.innerText = `You matched ${correctCount} out of ${selects.length} correctly!`;
   }
   
-  // Add a finish button after submitting matching
   const submitBtn = document.querySelector('#content-display-area button');
   if (submitBtn) {
     submitBtn.innerText = "Finish Activity →";
