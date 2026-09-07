@@ -143,7 +143,7 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #6b7280;'>Building your activity...</p>";
+    displayArea.innerHTML = "<p style='color: #6b7280;'>Building your school quiz...</p>";
 
     try {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -151,7 +151,12 @@ if (generateContentBtn) {
         headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
-          messages: [{ role: "user", content: `Based on these notes, generate ${count} items of type "${activityType}" in strict JSON format. If matching, return [{"type": "matching", "pairs": [{"term": "...", "definition": "..."}, ...]}]. Notes: ${notes}` }]
+          messages: [{ role: "user", content: `You are an expert teacher. Based on these study notes, generate ${count} high-quality, rigorous school-exam style questions of type "${activityType}". 
+          If matching, output JSON format: [{"type": "matching", "pairs": [{"term": "Short Key Concept", "definition": "Clear description/definition"}, ...]}].
+          If MCQ, output JSON format: [{"type": "mcq", "question": "Clear test question?", "options": ["Correct", "Wrong1", "Wrong2", "Wrong3"], "answer": "Correct"}].
+          If Fill in the Blank, output JSON format: [{"type": "blank", "question": "Sentence with _____ blank.", "answer": "word"}].
+          If Worksheet, output JSON format: [{"type": "worksheet", "questions": ["Question 1?", ...], "answers": ["Answer 1", ...]}].
+          Notes: ${notes}` }]
         })
       });
       const data = await response.json();
@@ -161,23 +166,26 @@ if (generateContentBtn) {
         currentQuizQuestions = Array.isArray(parsed) ? parsed : [parsed];
       } else { throw new Error(); }
     } catch (err) {
+      // SMART OFFLINE FALLBACK: Generates actual test questions instead of chopped fragments
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       currentQuizQuestions = [];
 
       if (activityType.toLowerCase().includes('match')) {
         const pairs = sentences.slice(0, count).map(s => {
           const text = s.trim();
-          let term = "";
+          let term = "Key Term";
           let definition = text;
-          
-          // Better term extraction: look for colon or use first 2-4 meaningful words
-          if (text.includes(':')) {
-            const parts = text.split(':');
+          if (text.includes('are')) {
+            const parts = text.split('are');
             term = parts[0].trim();
-            definition = parts.slice(1).join(':').trim();
+            definition = "Are " + parts.slice(1).join('are').trim();
+          } else if (text.includes('is')) {
+            const parts = text.split('is');
+            term = parts[0].trim();
+            definition = "Is " + parts.slice(1).join('is').trim();
           } else {
             const words = text.split(' ');
-            term = words.slice(0, Math.min(3, words.length)).join(' ');
+            term = words.slice(0, 2).join(' ');
           }
           return { term: term, definition: definition };
         });
@@ -185,17 +193,17 @@ if (generateContentBtn) {
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
         currentQuizQuestions.push({
           type: "worksheet",
-          questions: sentences.slice(0, count).map(s => `Explain: "${s.trim().substring(0, 45)}..."`),
+          questions: sentences.slice(0, count).map(s => `Describe and explain: ${s.trim().substring(0, 30)}...`),
           answers: sentences.slice(0, count).map(s => s.trim())
         });
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
         for (let i = 0; i < Math.min(count, sentences.length); i++) {
           const words = sentences[i].trim().split(' ');
-          const targetWord = words[Math.floor(words.length / 2)] || "word";
+          const targetWord = words.find(w => w.length > 5) || words[Math.floor(words.length / 2)];
           currentQuizQuestions.push({
             type: "blank",
             question: sentences[i].trim().replace(targetWord, '_____'),
-            answer: targetWord
+            answer: targetWord.replace(/[.,]/g, '')
           });
         }
       } else {
@@ -204,11 +212,11 @@ if (generateContentBtn) {
           const otherSentences = sentences.filter((_, idx) => idx !== i).map(s => s.trim());
           const distractors = otherSentences.slice(0, 3);
           while (distractors.length < 3) {
-            distractors.push("None of the above");
+            distractors.push("None of the above options are scientifically accurate.");
           }
           currentQuizQuestions.push({
             type: "mcq",
-            question: `According to your notes, which statement is accurate?`,
+            question: `Based on your study notes, which of the following statements is true?`,
             options: [correctText, ...distractors].sort(() => Math.random() - 0.5),
             answer: correctText
           });
@@ -230,8 +238,8 @@ function renderQuizQuestion() {
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `
       <div style="background: #f8fafc; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid #cbd5e1;">
-        <h3 style="color: #2563eb; margin-top: 0;">Activity Completed! 🎉 Score: ${userScore}/${currentQuizQuestions.length || 1}</h3>
-        <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Start New Activity</button>
+        <h3 style="color: #2563eb; margin-top: 0;">Quiz Completed! 🎉 Final Score: ${userScore}/${currentQuizQuestions.length || 1}</h3>
+        <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Generate New Quiz</button>
       </div>
     `;
     return;
@@ -249,8 +257,8 @@ function renderQuizQuestion() {
     const shuffledTerms = [...q.pairs].map(p => p.term).sort(() => Math.random() - 0.5);
 
     html += `
-      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Matching Activity</h3>
-      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Click a term on the left, then click its matching definition on the right:</p>
+      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Matching Quiz</h3>
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Click a term on the left, then click its corresponding definition on the right:</p>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="matching-board">
         <div style="display: flex; flex-direction: column; gap: 10px;" id="terms-column">
           <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Terms</h4>
@@ -268,29 +276,29 @@ function renderQuizQuestion() {
     `;
   } else if (type === 'worksheet' && q.questions) {
     html += `
-      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Normal Q&A Worksheet</h3>
+      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Study Worksheet</h3>
       <div style="margin-bottom: 20px;">
         <ol style="padding-left: 20px; line-height: 1.6; color: #1e293b;">
           ${q.questions.map(quest => `<li style="margin-bottom: 8px;">${quest}</li>`).join('')}
         </ol>
       </div>
       <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; border: 1px dashed #94a3b8;">
-        <h4 style="color: #475569; margin-top: 0; margin-bottom: 10px;">Answer Key:</h4>
+        <h4 style="color: #475569; margin-top: 0; margin-bottom: 10px;">Answer Key / Reference:</h4>
         <ul style="padding-left: 20px; line-height: 1.6; color: #334155; list-style-type: disc;">
           ${q.answers.map(ans => `<li style="margin-bottom: 6px;">${ans}</li>`).join('')}
         </ul>
       </div>
       <div style="text-align: right; margin-top: 20px;">
-        <button onclick="nextQuestion()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Done / Finish →</button>
+        <button onclick="nextQuestion()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Finish Quiz →</button>
       </div>
     `;
   } else if (type === 'blank') {
     html += `
-      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Item ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
       <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <input type="text" id="blank-answer-input" placeholder="Type missing word..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
-        <button onclick="handleBlankSubmit('${escapeQuotes(q.answer)}')" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit</button>
+        <input type="text" id="blank-answer-input" placeholder="Type missing keyword..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+        <button onclick="handleBlankSubmit('${escapeQuotes(q.answer)}')" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Answer</button>
       </div>
       <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
       <div style="text-align: right; margin-top: 15px;">
@@ -329,11 +337,9 @@ window.selectMatchingDef = function(element, definition) {
   }
   userMatches[selectedTerm] = definition;
   
-  // Highlight definition
   element.style.borderColor = '#3b82f6';
   element.style.background = '#eff6ff';
   
-  // Highlight matching term card as linked
   document.querySelectorAll('.match-term-card').forEach(card => {
     if (card.getAttribute('data-term') === selectedTerm) {
       card.style.borderColor = '#3b82f6';
@@ -347,11 +353,9 @@ window.handleMatchingSubmit = function(pairs) {
   const feedbackEl = document.getElementById('quiz-feedback');
   let correctCount = 0;
 
-  // Map definitions back to their correct terms for validation lookup
   const correctMap = {};
   pairs.forEach(p => { correctMap[p.term] = p.definition.trim(); });
 
-  // Style each card based on whether it was paired correctly or incorrectly
   document.querySelectorAll('.match-term-card').forEach(termCard => {
     const term = termCard.getAttribute('data-term');
     const userChosenDef = userMatches[term];
@@ -376,7 +380,6 @@ window.handleMatchingSubmit = function(pairs) {
 
   document.querySelectorAll('.match-def-card').forEach(defCard => {
     const def = defCard.getAttribute('data-def').trim();
-    // Find which term was matched to this definition
     const matchedTerm = Object.keys(userMatches).find(t => userMatches[t].trim() === def);
     
     if (!matchedTerm) {
@@ -402,7 +405,7 @@ window.handleMatchingSubmit = function(pairs) {
 
   const submitBtn = document.getElementById('matching-submit-btn');
   if (submitBtn) {
-    submitBtn.innerText = "Finish Activity →";
+    submitBtn.innerText = "Next Activity →";
     submitBtn.onclick = () => { currentQuizIndex++; renderQuizQuestion(); };
   }
 };
