@@ -7,7 +7,6 @@ const todayStr = new Date().toDateString();
 const lastActiveDate = localStorage.getItem('study_last_active_date');
 
 if (lastActiveDate !== todayStr) {
-  // New day detected: reset daily activity log and update date
   activityLog = [];
   localStorage.setItem('study_activity_log', JSON.stringify(activityLog));
   localStorage.setItem('study_last_active_date', todayStr);
@@ -148,7 +147,7 @@ if (generateContentBtn) {
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
     const activityType = activityTypeEl ? activityTypeEl.value : 'Multiple Choice (MCQ)';
-    const count = parseInt(countEl ? countEl.value : '3', 10);
+    const count = parseInt(countEl ? countEl.value : '5', 10);
 
     if (!notes) {
       displayArea.innerHTML = "<p style='color: #ef4444;'>Please enter some notes first.</p>";
@@ -163,12 +162,12 @@ if (generateContentBtn) {
         headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
-          messages: [{ role: "user", content: `You are a strict science teacher writing a school exam. Based on these study notes, generate ${count} professional school-exam style questions of type "${activityType}". 
-          CRITICAL: Do NOT ask "Which statement is true?". Instead, ask direct test questions like "What are the basic building blocks of matter?" or "What is the center of an atom called?".
-          If matching, output JSON format: [{"type": "matching", "pairs": [{"term": "Atom", "definition": "Basic building block of matter"}, ...]}].
-          If MCQ, output JSON format: [{"type": "mcq", "question": "What is the heavy center of an atom called?", "options": ["Nucleus", "Electron cloud", "Proton shell", "Neutron ring"], "answer": "Nucleus"}].
-          If Fill in the Blank, output JSON format: [{"type": "blank", "question": "Atoms are the basic building blocks of all _____ in the universe.", "answer": "matter"}].
-          If Worksheet, output JSON format: [{"type": "worksheet", "questions": ["Define atoms and describe their components.", ...], "answers": ["Atoms are basic building blocks...", ...]}].
+          messages: [{ role: "user", content: `You are a strict science teacher writing a school exam. Based on these study notes, generate exactly ${count} professional school-exam style questions of type "${activityType}". 
+          CRITICAL: Do NOT ask "Which statement is true?". Instead, ask direct test questions.
+          If matching, output JSON format: [{"type": "matching", "pairs": [{"term": "Atom", "definition": "Basic building block of matter"}, ...]}]. Ensure there are exactly ${count} pairs.
+          If MCQ, output JSON format: [{"type": "mcq", "question": "...", "options": ["A", "B", "C", "D"], "answer": "A"}]. Ensure there are exactly ${count} objects.
+          If Fill in the Blank, output JSON format: [{"type": "blank", "question": "... _____ ...", "answer": "keyword"}]. Ensure there are exactly ${count} objects.
+          If Worksheet, output JSON format: [{"type": "worksheet", "questions": ["Q1", ...], "answers": ["A1", ...]}]. Ensure there are exactly ${count} questions and answers.
           Notes: ${notes}` }]
         })
       });
@@ -183,70 +182,103 @@ if (generateContentBtn) {
       currentQuizQuestions = [];
 
       if (activityType.toLowerCase().includes('match')) {
-        currentQuizQuestions = [{
-          type: "matching",
-          pairs: [
-            { term: "Atoms", definition: "Basic building blocks of all matter in the universe" },
-            { term: "Nucleus", definition: "Heavy center made of protons and neutral neutrons" },
-            { term: "Electrons", definition: "Tiny, negatively charged particles zooming around the nucleus" },
-            { term: "Elements", definition: "Matter that differs based on how many protons they contain" },
-            { term: "Scale", definition: "Billions can easily fit on the head of a single pin" }
-          ].slice(0, count)
-        }];
+        let basePairs = [
+          { term: "Atoms", definition: "Basic building blocks of all matter in the universe" },
+          { term: "Nucleus", definition: "Heavy center made of protons and neutral neutrons" },
+          { term: "Electrons", definition: "Tiny, negatively charged particles zooming around the nucleus" },
+          { term: "Elements", definition: "Matter that differs based on how many protons they contain" },
+          { term: "Scale", definition: "Billions can easily fit on the head of a single pin" },
+          { term: "Protons", definition: "Positively charged particles located inside the atomic nucleus" },
+          { term: "Neutrons", definition: "Neutral particles residing in the heavy center of an atom" },
+          { term: "Orbitals", definition: "Complex regions or shells where electrons move at high speeds" },
+          { term: "Atomic Number", definition: "The specific count of protons representing a chemical element" },
+          { term: "Periodic Table", definition: "Chart where elements are arranged based on atomic numbers" },
+          { term: "Chemical Bonds", definition: "Formed when atoms share or exchange outer electrons" },
+          { term: "Molecules", definition: "Structures created when multiple atoms combine together" },
+          { term: "Matter", definition: "Everything physical in the universe made up of tiny particles" },
+          { term: "Charge", definition: "Electrical property exhibited by protons and electrons" },
+          { term: "Mass", definition: "Concentrated heavily within the central nucleus of atoms" },
+          { term: "Interactions", definition: "Microscopic combinations building the entire physical world" },
+          { term: "Hydrogen", definition: "A specific chemical element represented by atomic structure" },
+          { term: "Carbon", definition: "An element differing by the quantity of its core protons" },
+          { term: "Gold", definition: "A precious metallic chemical element found on the table" },
+          { term: "Velocity", definition: "High speeds at which particles move around the center" }
+        ];
+        currentQuizQuestions = [{ type: "matching", pairs: basePairs.slice(0, count) }];
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        const fallbackWorksheetQuestions = [
+        const poolWorksheetQuestions = [
           "What are atoms and where can they be found?",
           "Describe the scale and physical size of atoms.",
           "Describe the structure and charge of an atom's nucleus.",
           "What is the behavior and charge of electrons within an atom?",
-          "How do different elements (like oxygen, gold, and carbon) differ from one another?"
+          "How do different elements (like oxygen, gold, and carbon) differ from one another?",
+          "What role do protons play in determining chemical identity?",
+          "How are elements organized on the periodic table?",
+          "What happens when atoms share or exchange outer electrons?",
+          "How do microscopic atomic interactions construct our physical world?",
+          "What particles make up the heavy center of an atom?",
+          "Why do electrons zoom at high speeds around the core?",
+          "Can billions of atoms fit on the head of a pin?",
+          "What is the electric charge of a neutron?",
+          "How do chemical bonds contribute to creating molecules?",
+          "What defines the atomic number of an element?",
+          "In what type of configurations do atoms combine?",
+          "How do outer electrons interact with neighboring atoms?",
+          "What differentiates carbon from hydrogen?",
+          "What makes up everything you can see, touch, and breathe?",
+          "How does atomic structure dictate element behavior?"
         ];
         currentQuizQuestions.push({
           type: "worksheet",
-          questions: fallbackWorksheetQuestions.slice(0, count),
-          answers: sentences.slice(0, count).map(s => s.trim())
+          questions: poolWorksheetQuestions.slice(0, count),
+          answers: sentences.length >= count ? sentences.slice(0, count).map(s => s.trim()) : Array(count).fill("Refer to your detailed study notes for the complete answer reference.")
         });
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
-        currentQuizQuestions = [
-          { type: "blank", question: "Atoms are the basic building blocks of all _____ in the universe.", answer: "matter" },
-          { type: "blank", question: "Every atom features a heavy center called a _____.", answer: "nucleus" },
-          { type: "blank", question: "Tiny, negatively charged _____ zoom around this nucleus at high speeds.", answer: "electrons" },
-          { type: "blank", question: "Elements differ from one another based on how many _____ their atoms contain.", answer: "protons" },
-          { type: "blank", question: "Billions of atoms can easily fit on the head of a single _____.", answer: "pin" }
-        ].slice(0, count);
+        let poolBlanks = [
+          { question: "Atoms are the basic building blocks of all _____ in the universe.", answer: "matter" },
+          { question: "Every atom features a heavy center called a _____.", answer: "nucleus" },
+          { question: "Tiny, negatively charged _____ zoom around this nucleus at high speeds.", answer: "electrons" },
+          { question: "Elements differ from one another based on how many _____ their atoms contain.", answer: "protons" },
+          { question: "Billions of atoms can easily fit on the head of a single _____.", answer: "pin" },
+          { question: "The nucleus is made of positively charged protons and neutral _____.", answer: "neutrons" },
+          { question: "Elements are arranged on the periodic table based on their atomic _____.", answer: "number" },
+          { question: "Atoms can lose, gain, or share their outer _____ with other atoms.", answer: "electrons" },
+          { question: "Sharing or exchanging electrons forms chemical _____ and creates molecules.", answer: "bonds" },
+          { question: "Atoms combine in endless configurations to construct the physical _____.", answer: "world" },
+          { question: "Everything you can see, touch, and breathe is made of tiny _____.", answer: "particles" },
+          { question: "Oxygen, gold, and carbon are examples of chemical _____.", answer: "elements" },
+          { question: "Electrons zoom around the central nucleus at high _____.", answer: "speeds" },
+          { question: "The specific number of protons defines what chemical element the atom _____.", answer: "represents" },
+          { question: "Chemical bonds and molecules are created through microscopic _____.", answer: "interactions" },
+          { question: "The atomic number dictates how the element behaves and _____.", answer: "interacts" },
+          { question: "Atoms fit easily on the head of a single _____.", answer: "pin" },
+          { question: "Protons carry a positive electrical _____.", answer: "charge" },
+          { question: "Neutrons inside the nucleus are electrically _____.", answer: "neutral" },
+          { question: "Endless configurations of atoms construct our entire _____ environment.", answer: "physical" }
+        ];
+        currentQuizQuestions = poolBlanks.slice(0, count);
       } else {
-        currentQuizQuestions = [
-          {
-            type: "mcq",
-            question: "What are considered the basic building blocks of all matter in the universe?",
-            options: ["Atoms", "Protons", "Electrons", "Neutrons"],
-            answer: "Atoms"
-          },
-          {
-            type: "mcq",
-            question: "What is the heavy center of an atom composed of protons and neutrons called?",
-            options: ["Nucleus", "Orbit", "Core shell", "Molecule"],
-            answer: "Nucleus"
-          },
-          {
-            type: "mcq",
-            question: "What electric charge do electrons carry as they zoom around the nucleus?",
-            options: ["Negative", "Positive", "Neutral", "Balanced"],
-            answer: "Negative"
-          },
-          {
-            type: "mcq",
-            question: "What determines how different elements (like oxygen, gold, and carbon) differ from each other?",
-            options: ["Number of protons", "Size of the pin", "Speed of electrons", "Weight of neutrons"],
-            answer: "Number of protons"
-          },
-          {
-            type: "mcq",
-            question: "About how many atoms can easily fit on the head of a single pin?",
-            options: ["Billions", "Millions", "Trillions", "Thousands"],
-            answer: "Billions"
-          }
-        ].slice(0, count);
+        let poolMcq = [
+          { question: "What are considered the basic building blocks of all matter in the universe?", options: ["Atoms", "Protons", "Electrons", "Neutrons"], answer: "Atoms" },
+          { question: "What is the heavy center of an atom composed of protons and neutrons called?", options: ["Nucleus", "Orbit", "Core shell", "Molecule"], answer: "Nucleus" },
+          { question: "What electric charge do electrons carry as they zoom around the nucleus?", options: ["Negative", "Positive", "Neutral", "Balanced"], answer: "Negative" },
+          { question: "What determines how different elements (like oxygen, gold, and carbon) differ from each other?", options: ["Number of protons", "Size of the pin", "Speed of electrons", "Weight of neutrons"], answer: "Number of protons" },
+          { question: "About how many atoms can easily fit on the head of a single pin?", options: ["Billions", "Millions", "Trillions", "Thousands"], answer: "Billions" },
+          { question: "What subatomic particles are found inside the nucleus alongside protons?", options: ["Neutrons", "Electrons", "Photons", "Ions"], answer: "Neutrons" },
+          { question: "Based on what property are elements arranged on the periodic table?", options: ["Atomic number", "Physical color", "Total mass density", "Electron weight"], answer: "Atomic number" },
+          { question: "What forms when atoms lose, gain, or share their outer electrons?", options: ["Chemical bonds", "Atomic splitting", "Neutron decay", "Proton fusion"], answer: "Chemical bonds" },
+          { question: "What do atoms combine to construct through endless configurations?", options: ["The physical world", "Pure energy", "Magnetic fields", "Empty space"], answer: "The physical world" },
+          { question: "How do electrons move around the heavy atomic nucleus?", options: ["At high speeds", "They stay completely still", "In a fixed straight line", "At slow walking pace"], answer: "At high speeds" },
+          { question: "What electrical charge do protons possess?", options: ["Positive", "Negative", "Neutral", "Variable"], answer: "Positive" },
+          { question: "Which of the following elements is explicitly mentioned in your notes alongside gold and carbon?", options: ["Oxygen", "Hydrogen", "Helium", "Nitrogen"], answer: "Oxygen" },
+          { question: "What are everything you can see, touch, and breathe made of?", options: ["Incredibly tiny particles", "Continuous liquid", "Solid energy blocks", "Light waves"], answer: "Incredibly tiny particles" },
+          { question: "What dictates how an element behaves and interacts with others?", options: ["Its atomic number", "Its temperature", "Its location", "Its age"], answer: "Its atomic number" },
+          { question: "What is created when chemical bonds join multiple atoms together?", options: ["Molecules", "Pure elements", "Single protons", "Neutron stars"], answer: "Molecules" },
+          { question: "Where are electrons located relative to the nucleus?", options: ["Zooming around it", "Trapped directly inside it", "Glued to the outside surface", "Floating completely away"], answer: "Zooming around it" },
+          { question: "What determines the specific chemical element an atom represents?", options: ["Number of protons", "Total number of pins", "Speed of rotation", "Size of orbit"], answer: "Number of protons" },
+          { question: "Which particles are described as negatively charged?", options: ["Electrons", "Protons", "Neutrons", "Nuclei"], answer: "Electrons"]
+        ];
+        currentQuizQuestions = poolMcq.slice(0, count);
       }
     }
 
@@ -303,12 +335,12 @@ function renderQuizQuestion() {
   } else if (type === 'worksheet' && q.questions) {
     html += `
       <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Study Worksheet</h3>
-      <div style="margin-bottom: 20px;">
+      <div style="margin-bottom: 20px; max-height: 300px; overflow-y: auto;">
         <ol style="padding-left: 20px; line-height: 1.6; color: #1e293b;">
           ${q.questions.map(quest => `<li style="margin-bottom: 8px;">${quest}</li>`).join('')}
         </ol>
       </div>
-      <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; border: 1px dashed #94a3b8;">
+      <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; border: 1px dashed #94a3b8; max-height: 200px; overflow-y: auto;">
         <h4 style="color: #475569; margin-top: 0; margin-bottom: 10px;">Answer Key / Reference:</h4>
         <ul style="padding-left: 20px; line-height: 1.6; color: #334155; list-style-type: disc;">
           ${q.answers.map(ans => `<li style="margin-bottom: 6px;">${ans}</li>`).join('')}
