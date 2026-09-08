@@ -149,7 +149,7 @@ if (generateContentBtn) {
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
     const activityType = activityTypeEl ? activityTypeEl.value : 'Multiple Choice (MCQ)';
-    const count = parseInt(countEl ? countEl.value : '5', 10) || 5;
+    const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
 
     if (!notes) {
       displayArea.innerHTML = "<p style='color: #ef4444;'>Please enter some notes first.</p>";
@@ -551,9 +551,11 @@ const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn')
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
     const notesEl = document.getElementById('flashcard-notes');
+    const countEl = document.getElementById('flashcard-count');
     const displayArea = document.getElementById('flashcard-display-area');
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
+    const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
     if (!notes) return;
 
     displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>Generating flashcards...</p>";
@@ -564,7 +566,7 @@ if (generateFlashcardsBtn) {
         headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
-          messages: [{ role: "user", content: `Create 5 study flashcards in JSON array format: [{"front": "Key Term or Question", "back": "Clear definition or answer"}]. Notes: ${notes}` }]
+          messages: [{ role: "user", content: `Create exactly ${count} study flashcards in JSON array format: [{"front": "Key Term or Question", "back": "Clear definition or answer"}]. Notes: ${notes}` }]
         })
       });
       const data = await response.json();
@@ -572,12 +574,29 @@ if (generateFlashcardsBtn) {
         flashcardDeck = JSON.parse(data.choices[0].message.content.trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim());
       } else { throw new Error(); }
     } catch (err) {
-      flashcardDeck = [
+      let basePool = [
         { front: "What are atoms?", back: "Basic building blocks of all matter in the universe." },
         { front: "What is an atom's nucleus?", back: "A heavy center made of positively charged protons and neutral neutrons." },
         { front: "What do electrons do?", back: "Zoom around the nucleus at high speeds with a negative charge." },
-        { front: "What differentiates elements?", back: "How many protons their atoms contain (e.g., oxygen, gold, carbon)." }
+        { front: "What differentiates elements?", back: "How many protons their atoms contain (e.g., oxygen, gold, carbon)." },
+        { front: "How many atoms fit on a pin head?", back: "Billions of atoms can easily fit." },
+        { front: "What is the charge of a proton?", back: "Positive electrical charge." },
+        { front: "What is the charge of a neutron?", back: "Neutrally charged particles inside the nucleus." },
+        { front: "How are elements ordered?", back: "On the periodic table based on their atomic number." },
+        { front: "What are chemical bonds?", back: "Formed when atoms share or exchange outer electrons." },
+        { front: "What are molecules?", back: "Structures created when multiple atoms combine together." },
+        { front: "What is everything made of?", back: "Incredibly tiny particles." },
+        { front: "What determines chemical identity?", back: "The specific count of core protons." },
+        { front: "How do electrons move?", back: "At high speeds in complex regions or shells." },
+        { front: "What is atomic mass concentrated in?", back: "The heavy central nucleus." },
+        { front: "What constructs our physical world?", back: "Endless configurations of microscopic atomic interactions." },
+        { front: "What is carbon?", back: "A chemical element differing by its number of protons." },
+        { front: "What is hydrogen?", back: "A basic chemical element represented by atomic structure." },
+        { front: "What is a gold atom?", back: "A precious metallic chemical element." },
+        { front: "Do atoms interact?", back: "Yes, through microscopic combinations building the physical world." },
+        { front: "What is velocity of electrons?", back: "They move at very high speeds around the core." }
       ];
+      flashcardDeck = basePool.slice(0, count);
     }
 
     currentCardIndex = 0; isShowingFront = true;
