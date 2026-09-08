@@ -20,6 +20,8 @@ let isShowingFront = true;
 let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
+let currentMatchingPairs = [];
+let currentCorrectAnswer = "";
 
 // Matching State Variables
 let selectedTerm = null;
@@ -147,7 +149,7 @@ if (generateContentBtn) {
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
     const activityType = activityTypeEl ? activityTypeEl.value : 'Multiple Choice (MCQ)';
-    const count = parseInt(countEl ? countEl.value : '5', 10);
+    const count = parseInt(countEl ? countEl.value : '5', 10) || 5;
 
     if (!notes) {
       displayArea.innerHTML = "<p style='color: #ef4444;'>Please enter some notes first.</p>";
@@ -276,7 +278,9 @@ if (generateContentBtn) {
           { question: "What is created when chemical bonds join multiple atoms together?", options: ["Molecules", "Pure elements", "Single protons", "Neutron stars"], answer: "Molecules" },
           { question: "Where are electrons located relative to the nucleus?", options: ["Zooming around it", "Trapped directly inside it", "Glued to the outside surface", "Floating completely away"], answer: "Zooming around it" },
           { question: "What determines the specific chemical element an atom represents?", options: ["Number of protons", "Total number of pins", "Speed of rotation", "Size of orbit"], answer: "Number of protons" },
-          { question: "Which particles are described as negatively charged?", options: ["Electrons", "Protons", "Neutrons", "Nuclei"], answer: "Electrons"]
+          { question: "Which particles are described as negatively charged?", options: ["Electrons", "Protons", "Neutrons", "Nuclei"], answer: "Electrons" },
+          { question: "What type of configurations do atoms use to construct the physical world?", options: ["Endless configurations", "Single rigid lines", "Random bursts", "Stationary grids"], answer: "Endless configurations" },
+          { question: "What holds the heavy center of an atom together?", options: ["Protons and neutrons", "Outer electrons", "Pure heat", "Magnetic pull"], answer: "Protons and neutrons" }
         ];
         currentQuizQuestions = poolMcq.slice(0, count);
       }
@@ -311,6 +315,7 @@ function renderQuizQuestion() {
   if (type === 'matching' && q.pairs) {
     selectedTerm = null;
     userMatches = {};
+    currentMatchingPairs = q.pairs;
     const shuffledDefs = [...q.pairs].map(p => p.definition).sort(() => Math.random() - 0.5);
     const shuffledTerms = [...q.pairs].map(p => p.term).sort(() => Math.random() - 0.5);
 
@@ -320,16 +325,16 @@ function renderQuizQuestion() {
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="matching-board">
         <div style="display: flex; flex-direction: column; gap: 10px;" id="terms-column">
           <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Terms</h4>
-          ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, '${escapeQuotes(t)}')" data-term="${escapeQuotes(t)}" class="match-term-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 500; color: #1e293b; transition: all 0.2s;">${t}</div>`).join('')}
+          ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, window.decodeURIComponent('${encodeURIComponent(t)}'))" data-term="${t}" class="match-term-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 500; color: #1e293b; transition: all 0.2s;">${t}</div>`).join('')}
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;" id="defs-column">
           <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Definitions</h4>
-          ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, '${escapeQuotes(d)}')" data-def="${escapeQuotes(d)}" class="match-def-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #334155; transition: all 0.2s;">${d}</div>`).join('')}
+          ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, window.decodeURIComponent('${encodeURIComponent(d)}'))" data-def="${d}" class="match-def-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #334155; transition: all 0.2s;">${d}</div>`).join('')}
         </div>
       </div>
       <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
       <div style="text-align: right; margin-top: 20px;">
-        <button id="matching-submit-btn" onclick="handleMatchingSubmit(${JSON.stringify(q.pairs).replace(/"/g, '&quot;')})" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Matching</button>
+        <button id="matching-submit-btn" onclick="handleMatchingSubmit()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Matching</button>
       </div>
     `;
   } else if (type === 'worksheet' && q.questions) {
@@ -351,12 +356,13 @@ function renderQuizQuestion() {
       </div>
     `;
   } else if (type === 'blank') {
+    currentCorrectAnswer = q.answer;
     html += `
       <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
       <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; gap: 10px; margin-bottom: 15px;">
         <input type="text" id="blank-answer-input" placeholder="Type missing keyword..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
-        <button onclick="handleBlankSubmit('${escapeQuotes(q.answer)}')" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Answer</button>
+        <button onclick="handleBlankSubmit()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Answer</button>
       </div>
       <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
       <div style="text-align: right; margin-top: 15px;">
@@ -369,8 +375,8 @@ function renderQuizQuestion() {
       <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
     `;
-    q.options.forEach(opt => {
-      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${escapeQuotes(opt)}', '${escapeQuotes(q.answer)}') " style="text-align: left; padding: 12px 16px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 1rem; color: #1e293b;">${opt}</button>`;
+    q.options.forEach((opt, idx) => {
+      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, ${idx})" style="text-align: left; padding: 12px 16px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 1rem; color: #1e293b;">${opt}</button>`;
     });
     html += `</div><div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next Question →</button></div>`;
   }
@@ -381,7 +387,8 @@ function renderQuizQuestion() {
 
 window.selectMatchingTerm = function(element, term) {
   document.querySelectorAll('.match-term-card').forEach(card => {
-    if(!card.classList.contains('matched-success')) card.style.borderColor = '#cbd5e1';
+    card.style.borderColor = '#cbd5e1';
+    card.style.background = 'white';
   });
   element.style.borderColor = '#2563eb';
   element.style.background = '#eff6ff';
@@ -395,8 +402,12 @@ window.selectMatchingDef = function(element, definition) {
   }
   userMatches[selectedTerm] = definition;
   
-  element.style.borderColor = '#3b82f6';
-  element.style.background = '#eff6ff';
+  document.querySelectorAll('.match-def-card').forEach(card => {
+    if (card.getAttribute('data-def') === definition) {
+      card.style.borderColor = '#3b82f6';
+      card.style.background = '#eff6ff';
+    }
+  });
   
   document.querySelectorAll('.match-term-card').forEach(card => {
     if (card.getAttribute('data-term') === selectedTerm) {
@@ -407,9 +418,10 @@ window.selectMatchingDef = function(element, definition) {
   selectedTerm = null;
 };
 
-window.handleMatchingSubmit = function(pairs) {
+window.handleMatchingSubmit = function() {
   const feedbackEl = document.getElementById('quiz-feedback');
   let correctCount = 0;
+  const pairs = currentMatchingPairs;
 
   const correctMap = {};
   pairs.forEach(p => { correctMap[p.term] = p.definition.trim(); });
@@ -436,25 +448,6 @@ window.handleMatchingSubmit = function(pairs) {
     }
   });
 
-  document.querySelectorAll('.match-def-card').forEach(defCard => {
-    const def = defCard.getAttribute('data-def').trim();
-    const matchedTerm = Object.keys(userMatches).find(t => userMatches[t].trim() === def);
-    
-    if (!matchedTerm) {
-      defCard.style.borderColor = '#cbd5e1';
-      defCard.style.background = '#f1f5f9';
-      return;
-    }
-
-    if (correctMap[matchedTerm] === def) {
-      defCard.style.borderColor = '#10b981';
-      defCard.style.background = '#dcfce7';
-    } else {
-      defCard.style.borderColor = '#ef4444';
-      defCard.style.background = '#fee2e2';
-    }
-  });
-
   userScore = correctCount;
   if (feedbackEl) {
     feedbackEl.style.color = correctCount === pairs.length ? "#166534" : "#991b1b";
@@ -468,7 +461,11 @@ window.handleMatchingSubmit = function(pairs) {
   }
 };
 
-window.handleOptionClick = function(buttonElement, chosen, correct) {
+window.handleOptionClick = function(buttonElement, optionIndex) {
+  const q = currentQuizQuestions[currentQuizIndex];
+  const chosen = q.options[optionIndex];
+  const correct = q.answer;
+
   document.querySelectorAll('.quiz-option-btn').forEach(btn => btn.disabled = true);
   const feedbackEl = document.getElementById('quiz-feedback');
   const nextBtn = document.getElementById('next-q-btn');
@@ -484,7 +481,7 @@ window.handleOptionClick = function(buttonElement, chosen, correct) {
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
 
-window.handleBlankSubmit = function(correct) {
+window.handleBlankSubmit = function() {
   const inputEl = document.getElementById('blank-answer-input');
   const feedbackEl = document.getElementById('quiz-feedback');
   const nextBtn = document.getElementById('next-q-btn');
@@ -492,16 +489,15 @@ window.handleBlankSubmit = function(correct) {
 
   const val = inputEl.value.trim();
   inputEl.disabled = true;
-  if (val.toLowerCase() === correct.toLowerCase()) {
+  if (val.toLowerCase() === currentCorrectAnswer.toLowerCase()) {
     feedbackEl.style.color = "#166534"; feedbackEl.innerText = "Correct!"; userScore++;
   } else {
-    feedbackEl.style.color = "#991b1b"; feedbackEl.innerText = `Incorrect. Expected: "${correct}"`;
+    feedbackEl.style.color = "#991b1b"; feedbackEl.innerText = `Incorrect. Expected: "${currentCorrectAnswer}"`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
 
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
-function escapeQuotes(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
 // --- FLASHCARD SYSTEM ---
 const modeAutoBtn = document.getElementById('mode-auto-btn');
