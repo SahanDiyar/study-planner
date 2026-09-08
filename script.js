@@ -23,6 +23,47 @@ let currentCorrectAnswer = "";
 let selectedTerm = null;
 let userMatches = {};
 
+// --- THEME / DARK MODE MANAGER ---
+let currentTheme = localStorage.getItem('study_hub_theme') || 'light';
+
+function applyTheme(theme) {
+  const body = document.getElementById('body-layout');
+  const toggleBtn = document.getElementById('theme-toggle-btn');
+  const cards = document.querySelectorAll('.theme-card');
+  const texts = document.querySelectorAll('.theme-text');
+  const textSubs = document.querySelectorAll('.theme-text-sub');
+  const inputs = document.querySelectorAll('.theme-input');
+  const tableHeaders = document.querySelectorAll('.theme-table-header');
+
+  if (theme === 'dark') {
+    if (body) { body.style.background = '#0f172a'; body.style.color = '#f8fafc'; }
+    if (toggleBtn) { toggleBtn.innerText = '☀️ Light Mode'; toggleBtn.style.background = '#334155'; toggleBtn.style.color = '#f8fafc'; }
+    
+    cards.forEach(card => { card.style.background = '#1e293b'; card.style.border = '1px solid #334155'; });
+    texts.forEach(t => t.style.color = '#f8fafc');
+    textSubs.forEach(ts => ts.style.color = '#94a3b8');
+    inputs.forEach(inp => { inp.style.borderColor = '#475569'; inp.style.color = '#f8fafc'; });
+    tableHeaders.forEach(th => { th.style.background = '#0f172a'; th.style.color = '#cbd5e1'; });
+  } else {
+    if (body) { body.style.background = '#f1f5f9'; body.style.color = '#1e293b'; }
+    if (toggleBtn) { toggleBtn.innerText = '🌙 Dark Mode'; toggleBtn.style.background = '#e2e8f0'; toggleBtn.style.color = '#1e293b'; }
+    
+    cards.forEach(card => { card.style.background = 'white'; card.style.border = 'none'; });
+    texts.forEach(t => t.style.color = '#334155');
+    textSubs.forEach(ts => ts.style.color = '#64748b');
+    inputs.forEach(inp => { inp.style.borderColor = '#cbd5e1'; inp.style.color = '#1e293b'; });
+    tableHeaders.forEach(th => { th.style.background = '#f8fafc'; th.style.color = '#475569'; });
+  }
+}
+
+window.toggleDarkMode = function() {
+  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+  localStorage.setItem('study_hub_theme', currentTheme);
+  applyTheme(currentTheme);
+  renderTasks();
+  renderScheduleTable();
+};
+
 // --- TASK MANAGER ---
 const addTaskBtn = document.getElementById('add-task-btn');
 const taskInput = document.getElementById('task-input');
@@ -33,9 +74,10 @@ function renderTasks() {
   taskList.innerHTML = '';
   tasks.forEach((task, index) => {
     const li = document.createElement('li');
-    li.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #e5e7eb;";
+    const isDark = currentTheme === 'dark';
+    li.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid ${isDark ? '#334155' : '#e5e7eb'};`;
     li.innerHTML = `
-      <span style="${task.completed ? 'text-decoration: line-through; color: #9ca3af;' : 'color: #1f2937;'}">${task.text}</span>
+      <span style="${task.completed ? 'text-decoration: line-through; color: #9ca3af;' : (isDark ? 'color: #f8fafc;' : 'color: #1f2937;')}">${task.text}</span>
       <div style="display: flex; align-items: center; gap: 10px;">
         <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${index})" style="width: 18px; height: 18px; cursor: pointer;">
         <button onclick="deleteTask(${index})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Delete</button>
@@ -98,12 +140,13 @@ function renderScheduleTable() {
   const tbody = document.getElementById('schedule-table-body');
   if (!tbody) return;
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+  const isDark = currentTheme === 'dark';
   let html = '';
   for (let i = 0; i < 7; i++) {
-    html += `<tr><td style="padding: 8px; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold; color: #475569;">Period ${i + 1}</td>`;
+    html += `<tr><td style="padding: 8px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; background: ${isDark ? '#0f172a' : '#f8fafc'}; font-weight: bold; color: ${isDark ? '#cbd5e1' : '#475569'};">Period ${i + 1}</td>`;
     days.forEach(day => {
       const val = weeklyScheduleData[day]?.[i] || '';
-      html += `<td style="padding: 6px; border: 1px solid #cbd5e1;"><input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem; text-align: center;"></td>`;
+      html += `<td style="padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'};"><input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 4px; font-size: 0.85rem; text-align: center; background: ${isDark ? '#0f172a' : 'transparent'}; color: inherit;"></td>`;
     });
     html += `</tr>`;
   }
@@ -150,7 +193,7 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #6b7280;'>Building your school exam questions...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>Building your school exam questions...</p>";
 
     setTimeout(() => {
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
@@ -270,9 +313,11 @@ function renderQuizQuestion() {
   const displayArea = document.getElementById('content-display-area');
   if (!displayArea) return;
 
+  const isDark = currentTheme === 'dark';
+
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `
-      <div style="background: #f8fafc; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid #cbd5e1;">
+      <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'};">
         <h3 style="color: #2563eb; margin-top: 0;">Quiz Completed! 🎉 Final Score: ${userScore}/${currentQuizQuestions.length || 1}</h3>
         <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Generate New Quiz</button>
       </div>
@@ -283,7 +328,7 @@ function renderQuizQuestion() {
   const q = currentQuizQuestions[currentQuizIndex];
   const type = q.type || (q.questions ? 'worksheet' : (q.pairs ? 'matching' : 'mcq'));
 
-  let html = `<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px;">`;
+  let html = `<div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px;">`;
 
   if (type === 'matching' && q.pairs) {
     selectedTerm = null;
@@ -293,16 +338,16 @@ function renderQuizQuestion() {
     const shuffledTerms = [...q.pairs].map(p => p.term).sort(() => Math.random() - 0.5);
 
     html += `
-      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Matching Quiz</h3>
-      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Click a term on the left, then click its corresponding definition on the right:</p>
+      <h3 style="color: inherit; margin-top: 0; border-bottom: 2px solid ${isDark ? '#334155' : '#cbd5e1'}; padding-bottom: 8px;">Matching Quiz</h3>
+      <p style="color: ${isDark ? '#94a3b8' : '#64748b'}; font-size: 0.9rem; margin-bottom: 15px;">Click a term on the left, then click its corresponding definition on the right:</p>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="matching-board">
         <div style="display: flex; flex-direction: column; gap: 10px;" id="terms-column">
-          <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Terms</h4>
-          ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, window.decodeURIComponent('${encodeURIComponent(t)}'))" data-term="${t}" class="match-term-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 500; color: #1e293b; transition: all 0.2s;">${t}</div>`).join('')}
+          <h4 style="margin: 0; color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 0.95rem;">Terms</h4>
+          ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, window.decodeURIComponent('${encodeURIComponent(t)}'))" data-term="${t}" class="match-term-card" style="padding: 12px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-weight: 500; color: inherit; transition: all 0.2s;">${t}</div>`).join('')}
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;" id="defs-column">
-          <h4 style="margin: 0; color: #475569; font-size: 0.95rem;">Definitions</h4>
-          ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, window.decodeURIComponent('${encodeURIComponent(d)}'))" data-def="${d}" class="match-def-card" style="padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #334155; transition: all 0.2s;">${d}</div>`).join('')}
+          <h4 style="margin: 0; color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 0.95rem;">Definitions</h4>
+          ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, window.decodeURIComponent('${encodeURIComponent(d)}'))" data-def="${d}" class="match-def-card" style="padding: 12px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: inherit; transition: all 0.2s;">${d}</div>`).join('')}
         </div>
       </div>
       <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
@@ -312,15 +357,15 @@ function renderQuizQuestion() {
     `;
   } else if (type === 'worksheet' && q.questions) {
     html += `
-      <h3 style="color: #1e293b; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">Study Worksheet</h3>
+      <h3 style="color: inherit; margin-top: 0; border-bottom: 2px solid ${isDark ? '#334155' : '#cbd5e1'}; padding-bottom: 8px;">Study Worksheet</h3>
       <div style="margin-bottom: 20px; max-height: 300px; overflow-y: auto;">
-        <ol style="padding-left: 20px; line-height: 1.6; color: #1e293b;">
+        <ol style="padding-left: 20px; line-height: 1.6; color: inherit;">
           ${q.questions.map(quest => `<li style="margin-bottom: 8px;">${quest}</li>`).join('')}
         </ol>
       </div>
-      <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; border: 1px dashed #94a3b8; max-height: 200px; overflow-y: auto;">
-        <h4 style="color: #475569; margin-top: 0; margin-bottom: 10px;">Answer Key / Reference:</h4>
-        <ul style="padding-left: 20px; line-height: 1.6; color: #334155; list-style-type: disc;">
+      <div style="background: ${isDark ? '#1e293b' : '#f1f5f9'}; padding: 15px; border-radius: 6px; border: 1px dashed ${isDark ? '#475569' : '#94a3b8'}; max-height: 200px; overflow-y: auto;">
+        <h4 style="color: ${isDark ? '#cbd5e1' : '#475569'}; margin-top: 0; margin-bottom: 10px;">Answer Key / Reference:</h4>
+        <ul style="padding-left: 20px; line-height: 1.6; color: inherit; list-style-type: disc;">
           ${q.answers.map(ans => `<li style="margin-bottom: 6px;">${ans}</li>`).join('')}
         </ul>
       </div>
@@ -331,10 +376,10 @@ function renderQuizQuestion() {
   } else if (type === 'blank') {
     currentCorrectAnswer = q.answer;
     html += `
-      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
-      <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+      <div style="font-size: 0.85rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <input type="text" id="blank-answer-input" placeholder="Type missing keyword..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+        <input type="text" id="blank-answer-input" placeholder="Type missing keyword..." style="flex: 1; padding: 10px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; background: ${isDark ? '#1e293b' : 'transparent'}; color: inherit;">
         <button onclick="handleBlankSubmit()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Answer</button>
       </div>
       <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
@@ -344,12 +389,12 @@ function renderQuizQuestion() {
     `;
   } else {
     html += `
-      <div style="font-size: 0.85rem; color: #64748b; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
-      <div style="font-size: 1.1rem; color: #1e293b; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+      <div style="font-size: 0.85rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
     `;
     q.options.forEach((opt, idx) => {
-      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, ${idx})" style="text-align: left; padding: 12px 16px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 1rem; color: #1e293b;">${opt}</button>`;
+      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, ${idx})" style="text-align: left; padding: 12px 16px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 1rem; color: inherit;">${opt}</button>`;
     });
     html += `</div><div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next Question →</button></div>`;
   }
@@ -360,11 +405,11 @@ function renderQuizQuestion() {
 
 window.selectMatchingTerm = function(element, term) {
   document.querySelectorAll('.match-term-card').forEach(card => {
-    card.style.borderColor = '#cbd5e1';
-    card.style.background = 'white';
+    card.style.borderColor = currentTheme === 'dark' ? '#475569' : '#cbd5e1';
+    card.style.background = currentTheme === 'dark' ? '#1e293b' : 'white';
   });
   element.style.borderColor = '#2563eb';
-  element.style.background = '#eff6ff';
+  element.style.background = currentTheme === 'dark' ? '#1e3a8a' : '#eff6ff';
   selectedTerm = term;
 };
 
@@ -378,14 +423,14 @@ window.selectMatchingDef = function(element, definition) {
   document.querySelectorAll('.match-def-card').forEach(card => {
     if (card.getAttribute('data-def') === definition) {
       card.style.borderColor = '#3b82f6';
-      card.style.background = '#eff6ff';
+      card.style.background = currentTheme === 'dark' ? '#1e3a8a' : '#eff6ff';
     }
   });
   
   document.querySelectorAll('.match-term-card').forEach(card => {
     if (card.getAttribute('data-term') === selectedTerm) {
       card.style.borderColor = '#3b82f6';
-      card.style.background = '#eff6ff';
+      card.style.background = currentTheme === 'dark' ? '#1e3a8a' : '#eff6ff';
     }
   });
   selectedTerm = null;
@@ -404,26 +449,26 @@ window.handleMatchingSubmit = function() {
     const userChosenDef = userMatches[term];
 
     if (!userChosenDef) {
-      termCard.style.borderColor = '#cbd5e1';
-      termCard.style.background = '#f1f5f9';
+      termCard.style.borderColor = currentTheme === 'dark' ? '#475569' : '#cbd5e1';
+      termCard.style.background = currentTheme === 'dark' ? '#1e293b' : '#f1f5f9';
       return;
     }
 
     if (userChosenDef.trim() === correctMap[term]) {
       correctCount++;
       termCard.style.borderColor = '#10b981';
-      termCard.style.background = '#dcfce7';
+      termCard.style.background = '#065f46';
       termCard.innerHTML = `✅ ${term}`;
     } else {
       termCard.style.borderColor = '#ef4444';
-      termCard.style.background = '#fee2e2';
+      termCard.style.background = '#991b1b';
       termCard.innerHTML = `❌ ${term}`;
     }
   });
 
   userScore = correctCount;
   if (feedbackEl) {
-    feedbackEl.style.color = correctCount === pairs.length ? "#166534" : "#991b1b";
+    feedbackEl.style.color = correctCount === pairs.length ? "#34d399" : "#f87171";
     feedbackEl.innerText = `You correctly matched ${correctCount} out of ${pairs.length} pairs!`;
   }
 
@@ -444,12 +489,12 @@ window.handleOptionClick = function(buttonElement, optionIndex) {
   const nextBtn = document.getElementById('next-q-btn');
 
   if (chosen.trim() === correct.trim()) {
-    buttonElement.style.background = "#dcfce7"; buttonElement.style.borderColor = "#10b981";
-    feedbackEl.style.color = "#166534"; feedbackEl.innerText = "Correct! Great job.";
+    buttonElement.style.background = "#065f46"; buttonElement.style.borderColor = "#10b981";
+    feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct! Great job.";
     userScore++;
   } else {
-    buttonElement.style.background = "#fee2e2"; buttonElement.style.borderColor = "#ef4444";
-    feedbackEl.style.color = "#991b1b"; feedbackEl.innerText = `Incorrect. Correct answer: ${correct}`;
+    buttonElement.style.background = "#991b1b"; buttonElement.style.borderColor = "#ef4444";
+    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct answer: ${correct}`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
@@ -463,9 +508,9 @@ window.handleBlankSubmit = function() {
   const val = inputEl.value.trim();
   inputEl.disabled = true;
   if (val.toLowerCase() === currentCorrectAnswer.toLowerCase()) {
-    feedbackEl.style.color = "#166534"; feedbackEl.innerText = "Correct!"; userScore++;
+    feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!"; userScore++;
   } else {
-    feedbackEl.style.color = "#991b1b"; feedbackEl.innerText = `Incorrect. Expected: "${currentCorrectAnswer}"`;
+    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Expected: "${currentCorrectAnswer}"`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
@@ -484,35 +529,37 @@ if (modeAutoBtn && modeManualBtn) {
     manualContainer.style.display = 'none';
     modeAutoBtn.style.background = '#7c3aed';
     modeAutoBtn.style.color = 'white';
-    modeManualBtn.style.background = '#e2e8f0';
-    modeManualBtn.style.color = '#334155';
+    modeManualBtn.style.background = currentTheme === 'dark' ? '#334155' : '#e2e8f0';
+    modeManualBtn.style.color = currentTheme === 'dark' ? '#f8fafc' : '#334155';
   });
   modeManualBtn.addEventListener('click', () => {
     autoContainer.style.display = 'none';
     manualContainer.style.display = 'block';
     modeManualBtn.style.background = '#7c3aed';
     modeManualBtn.style.color = 'white';
-    modeAutoBtn.style.background = '#e2e8f0';
-    modeAutoBtn.style.color = '#334155';
+    modeAutoBtn.style.background = currentTheme === 'dark' ? '#334155' : '#e2e8f0';
+    modeAutoBtn.style.color = currentTheme === 'dark' ? '#f8fafc' : '#334155';
   });
 }
 
 function renderFlashcardPlayer() {
   const displayArea = document.getElementById('flashcard-display-area');
   if (!displayArea) return;
-  if (flashcardDeck.length === 0) { displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>No flashcards in deck yet.</p>"; return; }
+  const isDark = currentTheme === 'dark';
+
+  if (flashcardDeck.length === 0) { displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>No flashcards in deck yet.</p>"; return; }
 
   const currentCard = flashcardDeck[currentCardIndex];
   displayArea.innerHTML = `
-    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; cursor: pointer;" onclick="flipCardContent()">
-      <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
-      <div style="font-size: 1.1rem; color: #1e293b; margin: 15px 0; font-weight: 500;">${isShowingFront ? currentCard.front : currentCard.back}</div>
-      <div style="font-size: 0.75rem; color: #94a3b8;">(Click card to flip)</div>
+    <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; cursor: pointer;" onclick="flipCardContent()">
+      <div style="font-size: 0.8rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
+      <div style="font-size: 1.1rem; color: inherit; margin: 15px 0; font-weight: 500;">${isShowingFront ? currentCard.front : currentCard.back}</div>
+      <div style="font-size: 0.75rem; color: ${isDark ? '#64748b' : '#94a3b8'};">(Click card to flip)</div>
     </div>
     <div style="display: flex; justify-content: space-between; margin-top: 10px;">
-      <button onclick="prevCard()" style="background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Previous</button>
+      <button onclick="prevCard()" style="background: ${isDark ? '#334155' : '#e2e8f0'}; color: inherit; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Previous</button>
       <button onclick="flipCardContent()" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Flip</button>
-      <button onclick="nextCard()" style="background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Next</button>
+      <button onclick="nextCard()" style="background: ${isDark ? '#334155' : '#e2e8f0'}; color: inherit; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Next</button>
     </div>
   `;
 }
@@ -545,7 +592,7 @@ if (generateFlashcardsBtn) {
     const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
     if (!notes) return;
 
-    displayArea.innerHTML = "<p style='color: #6b7280; font-size: 0.9rem;'>Generating flashcards...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating flashcards...</p>";
 
     setTimeout(() => {
       let basePool = [
@@ -577,6 +624,8 @@ if (generateFlashcardsBtn) {
   });
 }
 
+// Initialize on page load
+applyTheme(currentTheme);
 renderTasks();
 updateAnalyticsDisplay();
 renderFlashcardPlayer();
