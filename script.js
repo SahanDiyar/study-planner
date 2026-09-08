@@ -1,6 +1,18 @@
 // --- INITIAL LOAD & GLOBAL VARIABLES ---
 let tasks = JSON.parse(localStorage.getItem('study_tasks')) || [];
 let activityLog = JSON.parse(localStorage.getItem('study_activity_log')) || [];
+
+// DAILY RESET CHECK: Filter out activity log entries from previous days
+const todayStr = new Date().toDateString();
+const lastActiveDate = localStorage.getItem('study_last_active_date');
+
+if (lastActiveDate !== todayStr) {
+  // New day detected: reset daily activity log and update date
+  activityLog = [];
+  localStorage.setItem('study_activity_log', JSON.stringify(activityLog));
+  localStorage.setItem('study_last_active_date', todayStr);
+}
+
 let flashcardDeck = [];
 let currentCardIndex = 0;
 let isShowingFront = true;
@@ -167,7 +179,6 @@ if (generateContentBtn) {
         currentQuizQuestions = Array.isArray(parsed) ? parsed : [parsed];
       } else { throw new Error(); }
     } catch (err) {
-      // SMART REALISTIC FALLBACK: Generates balanced test questions matching exact count
       const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
       currentQuizQuestions = [];
 
