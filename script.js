@@ -260,26 +260,26 @@ if (generateContentBtn) {
         }
 
       } else {
-        // Multiple Choice Style with clean distractor contrast
+        // Smarter MCQ Style with distinct conceptual focus and options
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
-          let wrongOptions = sentences.filter((_, i) => i !== idx).map(s => s);
-          if (wrongOptions.length < 3) {
-            wrongOptions = [
-              "This phenomenon operates independently without external environmental factors.",
-              "Biological components function exclusively through non-metabolic energy transfer.",
-              "Living systems rely entirely on static structural containment."
-            ];
-          }
-          
+          let words = sent.split(' ');
+          let keySubject = words.slice(0, 3).join(' ');
+          if (keySubject.length > 25) keySubject = words[0] + " " + words[1];
+
+          let wrongOptions = sentences.filter((_, i) => i !== idx);
+          let distractor1 = wrongOptions[0] ? `They primarily rely on static non-respiratory tissue.` : "They operate entirely through terrestrial adaptation mechanisms.";
+          let distractor2 = wrongOptions[1] ? `They lack specialized structural boundaries.` : "They maintain closed-circuit aerial respiratory systems.";
+          let distractor3 = "They function independently of environmental water balance.";
+
           let options = [
             sent, 
-            wrongOptions[0], 
-            wrongOptions[1] || "Secondary regulatory mechanism of biological systems", 
-            wrongOptions[2] || "Alternative non-classifiable structural pathway"
+            distractor1, 
+            distractor2, 
+            distractor3
           ].sort(() => Math.random() - 0.5);
           
           return {
-            question: `According to your study notes, which statement is correct?`,
+            question: `Regarding ${keySubject}..., which of the following is accurate?`,
             options: options,
             answer: sent
           };
@@ -682,7 +682,6 @@ if (generateFlashcardsBtn) {
       let newCards = [];
       for (let i = 0; i < Math.min(count, sentences.length); i++) {
         let sent = sentences[i];
-        // Clean phrase extraction using punctuation splits instead of blind string cutoffs
         let parts = sent.split(/[,;:]/);
         let conceptName = parts[0].trim();
         if (conceptName.length > 30 || conceptName.split(' ').length > 5) {
