@@ -208,8 +208,9 @@ if (generateContentBtn) {
       if (activityType.toLowerCase().includes('match')) {
         let pairs = [];
         sentences.forEach((sent, idx) => {
-          let words = sent.split(' ');
-          let keyTerm = words.slice(0, 3).join(' ') + (words.length > 3 ? '...' : '');
+          let parts = sent.split(/[,;:]/);
+          let keyTerm = parts[0].trim();
+          if (keyTerm.length > 25) keyTerm = keyTerm.split(' ').slice(0, 3).join(' ');
           pairs.push({ term: keyTerm, definition: sent });
         });
         while(pairs.length < count) {
@@ -218,9 +219,9 @@ if (generateContentBtn) {
         currentQuizQuestions = [{ type: "matching", pairs: pairs.slice(0, count) }];
 
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        let questions = sentences.map(s => `Explain the core concept and importance of: "${s.slice(0, 50)}..."`);
+        let questions = sentences.map(s => `Explain the core concept and importance of: "${s.slice(0, 45)}..."`);
         while(questions.length < count) {
-          questions.push(`Define and explain the principles behind: "${sentences[questions.length % sentences.length].slice(0, 40)}..."`);
+          questions.push(`Define and explain the principles behind: "${sentences[questions.length % sentences.length].slice(0, 35)}..."`);
         }
         currentQuizQuestions.push({
           type: "worksheet",
@@ -229,7 +230,6 @@ if (generateContentBtn) {
         });
 
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
-        // Stopwords & common sentence-starter words to avoid blanking out awkward words
         const ignoreWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'as', 'of', 'every', 'each', 'this', 'that', 'these', 'those', 'it', 'they', 'from']);
         
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
@@ -239,9 +239,8 @@ if (generateContentBtn) {
             clean: w.replace(/[^a-zA-Z]/g, '')
           })).filter(w => w.clean.length > 4 && !ignoreWords.has(w.clean.toLowerCase()));
 
-          // Pick the best substantive keyword if available, otherwise fallback
           let targetObj = candidateWords.length > 0 ? candidateWords[0] : { original: words[Math.min(2, words.length - 1)], clean: words[Math.min(2, words.length - 1)].replace(/[^a-zA-Z]/g, '') };
-          let targetWord = targetObj.clean || "organelles";
+          let targetWord = targetObj.clean || "system";
 
           let maskedSentence = sent.replace(new RegExp(`\\b${targetObj.original}\\b`, 'i'), '_____');
 
@@ -255,20 +254,20 @@ if (generateContentBtn) {
         while(currentQuizQuestions.length < count) {
           currentQuizQuestions.push({
             type: "blank",
-            question: `Complete the rule or definition: A key component involves _____ and structural functions.`,
-            answer: "organelles"
+            question: `Complete the key principle involving _____ and structural functions.`,
+            answer: "systems"
           });
         }
 
       } else {
-        // Curriculum Multiple Choice Style (Using full sentences as options)
+        // Multiple Choice Style with clean distractor contrast
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
           let wrongOptions = sentences.filter((_, i) => i !== idx).map(s => s);
           if (wrongOptions.length < 3) {
             wrongOptions = [
-              "Cellular structures operate independently without internal organization.",
-              "Biological components function exclusively through external energy absorption.",
-              "Living systems rely entirely on non-structural metabolic pathways."
+              "This phenomenon operates independently without external environmental factors.",
+              "Biological components function exclusively through non-metabolic energy transfer.",
+              "Living systems rely entirely on static structural containment."
             ];
           }
           
@@ -276,11 +275,11 @@ if (generateContentBtn) {
             sent, 
             wrongOptions[0], 
             wrongOptions[1] || "Secondary regulatory mechanism of biological systems", 
-            wrongOptions[2] || "Alternative non-cellular classification rule"
+            wrongOptions[2] || "Alternative non-classifiable structural pathway"
           ].sort(() => Math.random() - 0.5);
           
           return {
-            question: `Which of the following statements is accurate according to your notes?`,
+            question: `According to your study notes, which statement is correct?`,
             options: options,
             answer: sent
           };
@@ -683,13 +682,15 @@ if (generateFlashcardsBtn) {
       let newCards = [];
       for (let i = 0; i < Math.min(count, sentences.length); i++) {
         let sent = sentences[i];
-        let words = sent.split(' ');
-        // Keep front clean without awkward string cuts
-        let conceptName = words.slice(0, 4).join(' ');
-        if (words.length > 4) conceptName += '...';
+        // Clean phrase extraction using punctuation splits instead of blind string cutoffs
+        let parts = sent.split(/[,;:]/);
+        let conceptName = parts[0].trim();
+        if (conceptName.length > 30 || conceptName.split(' ').length > 5) {
+          conceptName = conceptName.split(' ').slice(0, 4).join(' ');
+        }
 
         newCards.push({
-          front: `Define/Explain: "${conceptName}"`,
+          front: `Concept: ${conceptName}`,
           back: sent,
           subject: subject
         });
@@ -698,7 +699,7 @@ if (generateFlashcardsBtn) {
       while(newCards.length < count) {
         let idx = newCards.length;
         newCards.push({
-          front: `Review core principle #${idx + 1} from study text.`,
+          front: `Core Principle #${idx + 1}`,
           back: notes.slice(0, 120) + "...",
           subject: subject
         });
