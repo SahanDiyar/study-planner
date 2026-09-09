@@ -177,7 +177,7 @@ window.toggleScheduleVisibility = function() {
   else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
 };
 
-// --- INTERACTIVE QUIZ GENERATOR & PLAYER ---
+// --- SMART DYNAMIC QUIZ GENERATOR ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
@@ -196,112 +196,74 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>Building your school exam questions...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>Analyzing your text and generating questions...</p>";
 
     setTimeout(() => {
-      const sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
+      let sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
+      sentences = sentences.map(s => s.trim()).filter(s => s.length > 5);
+      
+      if (sentences.length === 0) sentences = [notes];
       currentQuizQuestions = [];
 
       if (activityType.toLowerCase().includes('match')) {
-        let basePairs = [
-          { term: "Atoms", definition: "Basic building blocks of all matter in the universe" },
-          { term: "Nucleus", definition: "Heavy center made of protons and neutral neutrons" },
-          { term: "Electrons", definition: "Tiny, negatively charged particles zooming around the nucleus" },
-          { term: "Elements", definition: "Matter that differs based on how many protons they contain" },
-          { term: "Scale", definition: "Billions can easily fit on the head of a single pin" },
-          { term: "Protons", definition: "Positively charged particles located inside the atomic nucleus" },
-          { term: "Neutrons", definition: "Neutral particles residing in the heavy center of an atom" },
-          { term: "Orbitals", definition: "Complex regions or shells where electrons move at high speeds" },
-          { term: "Atomic Number", definition: "The specific count of protons representing a chemical element" },
-          { term: "Periodic Table", definition: "Chart where elements are arranged based on atomic numbers" },
-          { term: "Chemical Bonds", definition: "Formed when atoms share or exchange outer electrons" },
-          { term: "Molecules", definition: "Structures created when multiple atoms combine together" },
-          { term: "Matter", definition: "Everything physical in the universe made up of tiny particles" },
-          { term: "Charge", definition: "Electrical property exhibited by protons and electrons" },
-          { term: "Mass", definition: "Concentrated heavily within the central nucleus of atoms" },
-          { term: "Interactions", definition: "Microscopic combinations building the entire physical world" },
-          { term: "Hydrogen", definition: "A specific chemical element represented by atomic structure" },
-          { term: "Carbon", definition: "An element differing by the quantity of its core protons" },
-          { term: "Gold", definition: "A precious metallic chemical element found on the table" },
-          { term: "Velocity", definition: "High speeds at which particles move around the center" }
-        ];
-        currentQuizQuestions = [{ type: "matching", pairs: basePairs.slice(0, count) }];
+        let pairs = [];
+        sentences.forEach((sent, idx) => {
+          let words = sent.split(' ');
+          let keyTerm = words.slice(0, 3).join(' ') + (words.length > 3 ? '...' : '');
+          pairs.push({ term: keyTerm, definition: sent });
+        });
+        while(pairs.length < count) {
+          pairs.push({ term: `Detail ${pairs.length + 1}`, definition: sentences[pairs.length % sentences.length] });
+        }
+        currentQuizQuestions = [{ type: "matching", pairs: pairs.slice(0, count) }];
+
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        const poolWorksheetQuestions = [
-          "What are atoms and where can they be found?",
-          "Describe the scale and physical size of atoms.",
-          "Describe the structure and charge of an atom's nucleus.",
-          "What is the behavior and charge of electrons within an atom?",
-          "How do different elements (like oxygen, gold, and carbon) differ from one another?",
-          "What role do protons play in determining chemical identity?",
-          "How are elements organized on the periodic table?",
-          "What happens when atoms share or exchange outer electrons?",
-          "How do microscopic atomic interactions construct our physical world?",
-          "What particles make up the heavy center of an atom?",
-          "Why do electrons zoom at high speeds around the core?",
-          "Can billions of atoms fit on the head of a pin?",
-          "What is the electric charge of a neutron?",
-          "How do chemical bonds contribute to creating molecules?",
-          "What defines the atomic number of an element?",
-          "In what type of configurations do atoms combine?",
-          "How do outer electrons interact with neighboring atoms?",
-          "What differentiates carbon from hydrogen?",
-          "What makes up everything you can see, touch, and breathe?",
-          "How does atomic structure dictate element behavior?"
-        ];
+        let questions = sentences.map(s => `Explain or summarize the following concept based on your notes: "${s}"`);
+        while(questions.length < count) {
+          questions.push(`What is the significance of: "${sentences[questions.length % sentences.length]}"?`);
+        }
         currentQuizQuestions.push({
           type: "worksheet",
-          questions: poolWorksheetQuestions.slice(0, count),
-          answers: sentences.length >= count ? sentences.slice(0, count).map(s => s.trim()) : Array(count).fill("Refer to your detailed study notes for the complete answer reference.")
+          questions: questions.slice(0, count),
+          answers: sentences.slice(0, count)
         });
+
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
-        let poolBlanks = [
-          { type: "blank", question: "Atoms are the basic building blocks of all _____ in the universe.", answer: "matter" },
-          { type: "blank", question: "Every atom features a heavy center called a _____.", answer: "nucleus" },
-          { type: "blank", question: "Tiny, negatively charged _____ zoom around this nucleus at high speeds.", answer: "electrons" },
-          { type: "blank", question: "Elements differ from one another based on how many _____ their atoms contain.", answer: "protons" },
-          { type: "blank", question: "Billions of atoms can easily fit on the head of a single _____.", answer: "pin" },
-          { type: "blank", question: "The nucleus is made of positively charged protons and neutral _____.", answer: "neutrons" },
-          { type: "blank", question: "Elements are arranged on the periodic table based on their atomic _____.", answer: "number" },
-          { type: "blank", question: "Atoms can lose, gain, or share their outer _____ with other atoms.", answer: "electrons" },
-          { type: "blank", question: "Sharing or exchanging electrons forms chemical _____ and creates molecules.", answer: "bonds" },
-          { type: "blank", question: "Atoms combine in endless configurations to construct the physical _____.", answer: "world" },
-          { type: "blank", question: "Everything you can see, touch, and breathe is made of tiny _____.", answer: "particles" },
-          { type: "blank", question: "Oxygen, gold, and carbon are examples of chemical _____.", answer: "elements" },
-          { type: "blank", question: "Electrons zoom around the central nucleus at high _____.", answer: "speeds" },
-          { type: "blank", question: "The specific number of protons defines what chemical element the atom _____.", answer: "represents" },
-          { type: "blank", question: "Chemical bonds and molecules are created through microscopic _____.", answer: "interactions" },
-          { type: "blank", question: "The atomic number dictates how the element behaves and _____.", answer: "interacts" },
-          { type: "blank", question: "Atoms fit easily on the head of a single _____.", answer: "pin" },
-          { type: "blank", question: "Protons carry a positive electrical _____.", answer: "charge" },
-          { type: "blank", question: "Neutrons inside the nucleus are electrically _____.", answer: "neutral" },
-          { type: "blank", question: "Endless configurations of atoms construct our entire _____ environment.", answer: "physical" }
-        ];
-        currentQuizQuestions = poolBlanks.slice(0, count);
+        currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
+          let words = sent.split(' ');
+          let targetWordIdx = Math.min(2, words.length - 1);
+          let targetWord = words[targetWordIdx].replace(/[^a-zA-Z]/g, '');
+          if (!targetWord) targetWord = "key";
+          
+          words[targetWordIdx] = "_____";
+          return {
+            type: "blank",
+            question: words.join(' '),
+            answer: targetWord
+          };
+        });
+        while(currentQuizQuestions.length < count) {
+          currentQuizQuestions.push({
+            type: "blank",
+            question: `An essential part of the text states: _____ and processes.`,
+            answer: "systems"
+          });
+        }
+
       } else {
-        let poolMcq = [
-          { question: "What are considered the basic building blocks of all matter in the universe?", options: ["Atoms", "Protons", "Electrons", "Neutrons"], answer: "Atoms" },
-          { question: "What is the heavy center of an atom composed of protons and neutrons called?", options: ["Nucleus", "Orbit", "Core shell", "Molecule"], answer: "Nucleus" },
-          { question: "What electric charge do electrons carry as they zoom around the nucleus?", options: ["Negative", "Positive", "Neutral", "Balanced"], answer: "Negative" },
-          { question: "What determines how different elements (like oxygen, gold, and carbon) differ from each other?", options: ["Number of protons", "Size of the pin", "Speed of electrons", "Weight of neutrons"], answer: "Number of protons" },
-          { question: "About how many atoms can easily fit on the head of a single pin?", options: ["Billions", "Millions", "Trillions", "Thousands"], answer: "Billions" },
-          { question: "What subatomic particles are found inside the nucleus alongside protons?", options: ["Neutrons", "Electrons", "Photons", "Ions"], answer: "Neutrons" },
-          { question: "Based on what property are elements arranged on the periodic table?", options: ["Atomic number", "Physical color", "Total mass density", "Electron weight"], answer: "Atomic number" },
-          { question: "What forms when atoms lose, gain, or share their outer electrons?", options: ["Chemical bonds", "Atomic splitting", "Neutron decay", "Proton fusion"], answer: "Chemical bonds" },
-          { question: "What do atoms combine to construct through endless configurations?", options: ["The physical world", "Pure energy", "Magnetic fields", "Empty space"], answer: "The physical world" },
-          { question: "How do electrons move around the heavy atomic nucleus?", options: ["At high speeds", "They stay completely still", "In a fixed straight line", "At slow walking pace"], answer: "At high speeds" },
-          { question: "What electrical charge do protons possess?", options: ["Positive", "Negative", "Neutral", "Variable"], answer: "Positive" },
-          { question: "Which of the following elements is explicitly mentioned in your notes alongside gold and carbon?", options: ["Oxygen", "Hydrogen", "Helium", "Nitrogen"], answer: "Oxygen" },
-          { question: "What are everything you can see, touch, and breathe made of?", options: ["Incredibly tiny particles", "Continuous liquid", "Solid energy blocks", "Light waves"], answer: "Incredibly tiny particles" },
-          { question: "What dictates how an element behaves and interacts with others?", options: ["Its atomic number", "Its temperature", "Its location", "Its age"], answer: "Its atomic number" },
-          { question: "What is created when chemical bonds join multiple atoms together?", options: ["Molecules", "Pure elements", "Single protons", "Neutron stars"], answer: "Molecules" },
-          { question: "Where are electrons located relative to the nucleus?", options: ["Zooming around it", "Trapped directly inside it", "Glued to the outside surface", "Floating completely away"], answer: "Zooming around it" },
-          { question: "What determines the specific chemical element an atom represents?", options: ["Number of protons", "Total number of pins", "Speed of rotation", "Size of orbit"], answer: "Number of protons" },
-          { question: "Which particles are described as negatively charged?", options: ["Electrons", "Protons", "Neutrons", "Nuclei"], answer: "Electrons" },
-          { question: "What type of configurations do atoms use to construct the physical world?", options: ["Endless configurations", "Single rigid lines", "Random bursts", "Stationary grids"], answer: "Endless configurations" },
-          { question: "What holds the heavy center of an atom together?", options: ["Protons and neutrons", "Outer electrons", "Pure heat", "Magnetic pull"], answer: "Protons and neutrons" }
-        ];
-        currentQuizQuestions = poolMcq.slice(0, count);
+        currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
+          let wrongOptions = sentences.filter((_, i) => i !== idx).map(s => s.slice(0, 30) + "...");
+          if (wrongOptions.length < 3) {
+            wrongOptions = ["Alternative structural process", "Secondary cellular mechanism", "None of the above"];
+          }
+          let options = [sent.slice(0, 45) + "...", wrongOptions[0], wrongOptions[1], wrongOptions[2]].sort(() => Math.random() - 0.5);
+          
+          return {
+            question: `Which statement accurately reflects your notes regarding point #${idx + 1}?`,
+            options: options,
+            answer: sent.slice(0, 45) + "..."
+          };
+        });
       }
 
       currentQuizIndex = 0;
@@ -678,6 +640,7 @@ if (addManualCardBtn) {
   });
 }
 
+// --- SMART DYNAMIC FLASHCARD GENERATOR ---
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
@@ -689,24 +652,34 @@ if (generateFlashcardsBtn) {
     const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
     if (!notes) return;
 
-    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating flashcards...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating flashcards from your text...</p>";
 
     setTimeout(() => {
       const subject = getSelectedSubject();
-      let basePool = [
-        { front: "What are atoms?", back: "Basic building blocks of all matter in the universe." },
-        { front: "What is an atom's nucleus?", back: "A heavy center made of positively charged protons and neutral neutrons." },
-        { front: "What do electrons do?", back: "Zoom around the nucleus at high speeds with a negative charge." },
-        { front: "What differentiates elements?", back: "How many protons their atoms contain (e.g., oxygen, gold, carbon)." },
-        { front: "How many atoms fit on a pin head?", back: "Billions of atoms can easily fit." },
-        { front: "What is the charge of a proton?", back: "Positive electrical charge." },
-        { front: "What is the charge of a neutron?", back: "Neutrally charged particles inside the nucleus." },
-        { front: "How are elements ordered?", back: "On the periodic table based on their atomic number." },
-        { front: "What are chemical bonds?", back: "Formed when atoms share or exchange outer electrons." },
-        { front: "What are molecules?", back: "Structures created when multiple atoms combine together." }
-      ];
-      
-      const newCards = basePool.slice(0, count).map(card => ({ ...card, subject }));
+      let sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
+      sentences = sentences.map(s => s.trim()).filter(s => s.length > 3);
+
+      let newCards = [];
+      for (let i = 0; i < Math.min(count, sentences.length); i++) {
+        let sent = sentences[i];
+        let words = sent.split(' ');
+        let frontTerm = words.slice(0, 4).join(' ') + (words.length > 4 ? '?' : '');
+        newCards.push({
+          front: `What does the text say about: "${frontTerm}"?`,
+          back: sent,
+          subject: subject
+        });
+      }
+
+      while(newCards.length < count) {
+        let idx = newCards.length;
+        newCards.push({
+          front: `Review concept point #${idx + 1} from your notes.`,
+          back: notes.slice(0, 100) + "...",
+          subject: subject
+        });
+      }
+
       flashcardDeck = flashcardDeck.concat(newCards);
       localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
       
