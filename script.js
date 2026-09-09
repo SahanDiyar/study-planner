@@ -177,7 +177,7 @@ window.toggleScheduleVisibility = function() {
   else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
 };
 
-// --- SMART DYNAMIC QUIZ GENERATOR ---
+// --- SMART CURRICULUM QUIZ GENERATOR ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
@@ -196,7 +196,7 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>Analyzing your text and generating questions...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>Formulating school-style test questions...</p>";
 
     setTimeout(() => {
       let sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
@@ -213,14 +213,14 @@ if (generateContentBtn) {
           pairs.push({ term: keyTerm, definition: sent });
         });
         while(pairs.length < count) {
-          pairs.push({ term: `Detail ${pairs.length + 1}`, definition: sentences[pairs.length % sentences.length] });
+          pairs.push({ term: `Concept ${pairs.length + 1}`, definition: sentences[pairs.length % sentences.length] });
         }
         currentQuizQuestions = [{ type: "matching", pairs: pairs.slice(0, count) }];
 
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        let questions = sentences.map(s => `Explain or summarize the following concept based on your notes: "${s}"`);
+        let questions = sentences.map(s => `Explain the core concept and importance of: "${s.slice(0, 50)}..."`);
         while(questions.length < count) {
-          questions.push(`What is the significance of: "${sentences[questions.length % sentences.length]}"?`);
+          questions.push(`Define and explain the principles behind: "${sentences[questions.length % sentences.length].slice(0, 40)}..."`);
         }
         currentQuizQuestions.push({
           type: "worksheet",
@@ -233,35 +233,49 @@ if (generateContentBtn) {
           let words = sent.split(' ');
           let targetWordIdx = Math.min(2, words.length - 1);
           let targetWord = words[targetWordIdx].replace(/[^a-zA-Z]/g, '');
-          if (!targetWord) targetWord = "key";
+          if (!targetWord) targetWord = "process";
           
           words[targetWordIdx] = "_____";
           return {
             type: "blank",
-            question: words.join(' '),
+            question: `Fill in the missing term: "${words.join(' ')}"`,
             answer: targetWord
           };
         });
         while(currentQuizQuestions.length < count) {
           currentQuizQuestions.push({
             type: "blank",
-            question: `An essential part of the text states: _____ and processes.`,
+            question: `Complete the rule or definition: A key component involves _____ and structural functions.`,
             answer: "systems"
           });
         }
 
       } else {
+        // Curriculum Multiple Choice Style
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
-          let wrongOptions = sentences.filter((_, i) => i !== idx).map(s => s.slice(0, 30) + "...");
+          let words = sent.split(' ');
+          let concept = words.slice(0, 3).join(' ');
+          
+          let wrongOptions = sentences.filter((_, i) => i !== idx).map(s => s.slice(0, 40) + "...");
           if (wrongOptions.length < 3) {
-            wrongOptions = ["Alternative structural process", "Secondary cellular mechanism", "None of the above"];
+            wrongOptions = [
+              "Alternative structural regulation mechanism", 
+              "Secondary metabolic pathway process", 
+              "None of the above principles apply"
+            ];
           }
-          let options = [sent.slice(0, 45) + "...", wrongOptions[0], wrongOptions[1], wrongOptions[2]].sort(() => Math.random() - 0.5);
+          
+          let options = [
+            sent, 
+            wrongOptions[0] || "Standard secondary process", 
+            wrongOptions[1] || "Alternative regulatory function", 
+            wrongOptions[2] || "Inapplicable property"
+          ].sort(() => Math.random() - 0.5);
           
           return {
-            question: `Which statement accurately reflects your notes regarding point #${idx + 1}?`,
+            question: `Which of the following statements is accurate regarding "${concept}..."?`,
             options: options,
-            answer: sent.slice(0, 45) + "..."
+            answer: sent
           };
         });
       }
@@ -665,7 +679,7 @@ if (generateFlashcardsBtn) {
         let words = sent.split(' ');
         let frontTerm = words.slice(0, 4).join(' ') + (words.length > 4 ? '?' : '');
         newCards.push({
-          front: `What does the text say about: "${frontTerm}"?`,
+          front: `Define or explain: "${frontTerm}"`,
           back: sent,
           subject: subject
         });
@@ -674,7 +688,7 @@ if (generateFlashcardsBtn) {
       while(newCards.length < count) {
         let idx = newCards.length;
         newCards.push({
-          front: `Review concept point #${idx + 1} from your notes.`,
+          front: `Review core principle #${idx + 1} from study text.`,
           back: notes.slice(0, 100) + "...",
           subject: subject
         });
