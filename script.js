@@ -259,29 +259,26 @@ if (generateContentBtn) {
         }
 
       } else {
-        // Curriculum Multiple Choice Style
+        // Curriculum Multiple Choice Style (Using full sentences as options to avoid awkward fragments)
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
-          let words = sent.split(' ');
-          let concept = words.slice(0, 3).join(' ');
-          
-          let wrongOptions = sentences.filter((_, i) => i !== idx).map(s => s.slice(0, 40) + "...");
+          let wrongOptions = sentences.filter((_, i) => i !== idx).map(s => s);
           if (wrongOptions.length < 3) {
             wrongOptions = [
-              "Alternative structural regulation mechanism", 
-              "Secondary metabolic pathway process", 
-              "None of the above principles apply"
+              "Cellular structures operate independently without internal organization.",
+              "Biological components function exclusively through external energy absorption.",
+              "Living systems rely entirely on non-structural metabolic pathways."
             ];
           }
           
           let options = [
             sent, 
-            wrongOptions[0] || "Standard secondary process", 
-            wrongOptions[1] || "Alternative regulatory function", 
-            wrongOptions[2] || "Inapplicable property"
+            wrongOptions[0], 
+            wrongOptions[1] || "Secondary regulatory mechanism of biological systems", 
+            wrongOptions[2] || "Alternative non-cellular classification rule"
           ].sort(() => Math.random() - 0.5);
           
           return {
-            question: `Which of the following statements is accurate regarding "${concept}..."?`,
+            question: `Which of the following statements is accurate according to your notes?`,
             options: options,
             answer: sent
           };
@@ -685,9 +682,9 @@ if (generateFlashcardsBtn) {
       for (let i = 0; i < Math.min(count, sentences.length); i++) {
         let sent = sentences[i];
         let words = sent.split(' ');
-        let frontTerm = words.slice(0, 4).join(' ') + (words.length > 4 ? '?' : '');
+        let keyword = words.slice(0, 3).join(' ');
         newCards.push({
-          front: `Define or explain: "${frontTerm}"`,
+          front: `Explain / Describe concept: "${keyword}..."`,
           back: sent,
           subject: subject
         });
