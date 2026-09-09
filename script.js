@@ -229,17 +229,19 @@ if (generateContentBtn) {
         });
 
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
-        const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'as', 'of']);
+        // Stopwords & common sentence-starter words to avoid blanking out awkward words
+        const ignoreWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'as', 'of', 'every', 'each', 'this', 'that', 'these', 'those', 'it', 'they', 'from']);
         
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
           let words = sent.split(' ');
           let candidateWords = words.map(w => ({
             original: w,
             clean: w.replace(/[^a-zA-Z]/g, '')
-          })).filter(w => w.clean.length > 4 && !stopWords.has(w.clean.toLowerCase()));
+          })).filter(w => w.clean.length > 4 && !ignoreWords.has(w.clean.toLowerCase()));
 
-          let targetObj = candidateWords.length > 0 ? candidateWords[0] : { original: words[0], clean: words[0].replace(/[^a-zA-Z]/g, '') };
-          let targetWord = targetObj.clean || "process";
+          // Pick the best substantive keyword if available, otherwise fallback
+          let targetObj = candidateWords.length > 0 ? candidateWords[0] : { original: words[Math.min(2, words.length - 1)], clean: words[Math.min(2, words.length - 1)].replace(/[^a-zA-Z]/g, '') };
+          let targetWord = targetObj.clean || "organelles";
 
           let maskedSentence = sent.replace(new RegExp(`\\b${targetObj.original}\\b`, 'i'), '_____');
 
@@ -254,12 +256,12 @@ if (generateContentBtn) {
           currentQuizQuestions.push({
             type: "blank",
             question: `Complete the rule or definition: A key component involves _____ and structural functions.`,
-            answer: "systems"
+            answer: "organelles"
           });
         }
 
       } else {
-        // Curriculum Multiple Choice Style (Using full sentences as options to avoid awkward fragments)
+        // Curriculum Multiple Choice Style (Using full sentences as options)
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
           let wrongOptions = sentences.filter((_, i) => i !== idx).map(s => s);
           if (wrongOptions.length < 3) {
@@ -676,15 +678,18 @@ if (generateFlashcardsBtn) {
     setTimeout(() => {
       const subject = getSelectedSubject();
       let sentences = notes.match(/[^.!?]+[.!?]+/g) || [notes];
-      sentences = sentences.map(s => s.trim()).filter(s => s.length > 3);
+      sentences = sentences.map(s => s.trim()).filter(s => s.length > 5);
 
       let newCards = [];
       for (let i = 0; i < Math.min(count, sentences.length); i++) {
         let sent = sentences[i];
         let words = sent.split(' ');
-        let keyword = words.slice(0, 3).join(' ');
+        // Keep front clean without awkward string cuts
+        let conceptName = words.slice(0, 4).join(' ');
+        if (words.length > 4) conceptName += '...';
+
         newCards.push({
-          front: `Explain / Describe concept: "${keyword}..."`,
+          front: `Define/Explain: "${conceptName}"`,
           back: sent,
           subject: subject
         });
@@ -694,7 +699,7 @@ if (generateFlashcardsBtn) {
         let idx = newCards.length;
         newCards.push({
           front: `Review core principle #${idx + 1} from study text.`,
-          back: notes.slice(0, 100) + "...",
+          back: notes.slice(0, 120) + "...",
           subject: subject
         });
       }
