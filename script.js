@@ -229,19 +229,27 @@ if (generateContentBtn) {
         });
 
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
+        const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'as', 'of']);
+        
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
           let words = sent.split(' ');
-          let targetWordIdx = Math.min(2, words.length - 1);
-          let targetWord = words[targetWordIdx].replace(/[^a-zA-Z]/g, '');
-          if (!targetWord) targetWord = "process";
-          
-          words[targetWordIdx] = "_____";
+          let candidateWords = words.map(w => ({
+            original: w,
+            clean: w.replace(/[^a-zA-Z]/g, '')
+          })).filter(w => w.clean.length > 4 && !stopWords.has(w.clean.toLowerCase()));
+
+          let targetObj = candidateWords.length > 0 ? candidateWords[0] : { original: words[0], clean: words[0].replace(/[^a-zA-Z]/g, '') };
+          let targetWord = targetObj.clean || "process";
+
+          let maskedSentence = sent.replace(new RegExp(`\\b${targetObj.original}\\b`, 'i'), '_____');
+
           return {
             type: "blank",
-            question: `Fill in the missing term: "${words.join(' ')}"`,
+            question: `Fill in the missing term: "${maskedSentence}"`,
             answer: targetWord
           };
         });
+
         while(currentQuizQuestions.length < count) {
           currentQuizQuestions.push({
             type: "blank",
