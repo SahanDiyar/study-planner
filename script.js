@@ -10,9 +10,11 @@ if (lastActiveDate !== todayStr) {
   localStorage.setItem('study_last_active_date', todayStr);
 }
 
-let flashcardDeck = [];
+// --- FLASHCARD STATE & SUBJECT TAGGING ---
+let flashcardDeck = JSON.parse(localStorage.getItem('study_flashcard_deck')) || [];
 let currentCardIndex = 0;
 let isShowingFront = true;
+let currentSubjectFilter = 'All';
 
 let currentQuizQuestions = [];
 let currentQuizIndex = 0;
@@ -62,6 +64,7 @@ window.toggleDarkMode = function() {
   applyTheme(currentTheme);
   renderTasks();
   renderScheduleTable();
+  renderFlashcardPlayer();
 };
 
 // --- TASK MANAGER ---
@@ -517,7 +520,7 @@ window.handleBlankSubmit = function() {
 
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 
-// --- FLASHCARD SYSTEM ---
+// --- FLASHCARD SYSTEM WITH SUBJECT TAGS ---
 const modeAutoBtn = document.getElementById('mode-auto-btn');
 const modeManualBtn = document.getElementById('mode-manual-btn');
 const autoContainer = document.getElementById('flashcard-auto-container');
@@ -542,17 +545,88 @@ if (modeAutoBtn && modeManualBtn) {
   });
 }
 
+window.handleSubjectDropdownChange = function() {
+  const select = document.getElementById('flashcard-subject-select');
+  const customInput = document.getElementById('custom-subject-input');
+  if (!select || !customInput) return;
+
+  if (select.value === 'Custom') {
+    customInput.style.display = 'block';
+    customInput.focus();
+  } else {
+    customInput.style.display = 'none';
+    customInput.value = '';
+  }
+};
+
+function getSelectedSubject() {
+  const select = document.getElementById('flashcard-subject-select');
+  const customInput = document.getElementById('custom-subject-input');
+  if (!select) return 'General';
+
+  if (select.value === 'Custom' && customInput && customInput.value.trim()) {
+    return customInput.value.trim();
+  }
+  return select.value || 'General';
+}
+
+function updateSubjectFilterDropdown() {
+  const filterSelect = document.getElementById('filter-subject-select');
+  if (!filterSelect) return;
+
+  const subjects = [...new Set(flashcardDeck.map(card => card.subject || 'General'))];
+  
+  let optionsHtml = `<option value="All" style="background: inherit; color: inherit;">All Subjects (${flashcardDeck.length})</option>`;
+  subjects.forEach(subj => {
+    const count = flashcardDeck.filter(c => (c.subject || 'General') === subj).length;
+    const selected = currentSubjectFilter === subj ? 'selected' : '';
+    optionsHtml += `<option value="${subj}" ${selected} style="background: inherit; color: inherit;">${subj} (${count})</option>`;
+  });
+  
+  filterSelect.innerHTML = optionsHtml;
+}
+
+window.handleFilterChange = function() {
+  const filterSelect = document.getElementById('filter-subject-select');
+  if (!filterSelect) return;
+  currentSubjectFilter = filterSelect.value;
+  currentCardIndex = 0;
+  isShowingFront = true;
+  renderFlashcardPlayer();
+};
+
+function getFilteredDeck() {
+  if (currentSubjectFilter === 'All') return flashcardDeck;
+  return flashcardDeck.filter(card => (card.subject || 'General') === currentSubjectFilter);
+}
+
 function renderFlashcardPlayer() {
   const displayArea = document.getElementById('flashcard-display-area');
   if (!displayArea) return;
   const isDark = currentTheme === 'dark';
 
-  if (flashcardDeck.length === 0) { displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>No flashcards in deck yet.</p>"; return; }
+  updateSubjectFilterDropdown();
+  const activeDeck = getFilteredDeck();
 
-  const currentCard = flashcardDeck[currentCardIndex];
+  if (activeDeck.length === 0) {
+    displayArea.innerHTML = `<p style='color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 15px;'>No flashcards found for "${currentSubjectFilter}".</p>`;
+    return;
+  }
+
+  if (currentCardIndex >= activeDeck.length) {
+    currentCardIndex = 0;
+  }
+
+  const currentCard = activeDeck[currentCardIndex];
+  const cardSubject = currentCard.subject || 'General';
+
   displayArea.innerHTML = `
-    <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; cursor: pointer;" onclick="flipCardContent()">
-      <div style="font-size: 0.8rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
+    <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; cursor: pointer; position: relative;" onclick="flipCardContent()">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.75rem; background: #7c3aed; color: white; padding: 2px 8px; border-radius: 12px; font-weight: 500;">${cardSubject}</span>
+        <div style="font-size: 0.8rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: 600;">Card ${currentCardIndex + 1} of ${activeDeck.length}</div>
+        <button onclick="event.stopPropagation(); deleteCurrentCard(${flashcardDeck.indexOf(currentCard)})" title="Delete Card" style="background: transparent; color: #ef4444; border: none; cursor: pointer; font-size: 0.85rem;">🗑️</button>
+      </div>
       <div style="font-size: 1.1rem; color: inherit; margin: 15px 0; font-weight: 500;">${isShowingFront ? currentCard.front : currentCard.back}</div>
       <div style="font-size: 0.75rem; color: ${isDark ? '#64748b' : '#94a3b8'};">(Click card to flip)</div>
     </div>
@@ -566,7 +640,24 @@ function renderFlashcardPlayer() {
 
 window.flipCardContent = function() { isShowingFront = !isShowingFront; renderFlashcardPlayer(); };
 window.prevCard = function() { if (currentCardIndex > 0) { currentCardIndex--; isShowingFront = true; renderFlashcardPlayer(); } };
-window.nextCard = function() { if (currentCardIndex < flashcardDeck.length - 1) { currentCardIndex++; isShowingFront = true; renderFlashcardPlayer(); recordActivity('flashcards', 1); } };
+window.nextCard = function() { 
+  const activeDeck = getFilteredDeck();
+  if (currentCardIndex < activeDeck.length - 1) { 
+    currentCardIndex++; 
+    isShowingFront = true; 
+    renderFlashcardPlayer(); 
+    recordActivity('flashcards', 1); 
+  } 
+};
+
+window.deleteCurrentCard = function(absoluteIndex) {
+  if (absoluteIndex > -1) {
+    flashcardDeck.splice(absoluteIndex, 1);
+    localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
+    currentCardIndex = 0;
+    renderFlashcardPlayer();
+  }
+};
 
 const addManualCardBtn = document.getElementById('add-manual-card-btn');
 if (addManualCardBtn) {
@@ -574,9 +665,15 @@ if (addManualCardBtn) {
     const frontInput = document.getElementById('manual-front');
     const backInput = document.getElementById('manual-back');
     if (!frontInput || !backInput || !frontInput.value.trim() || !backInput.value.trim()) return;
-    flashcardDeck.push({ front: frontInput.value.trim(), back: backInput.value.trim() });
+    
+    const subject = getSelectedSubject();
+    flashcardDeck.push({ front: frontInput.value.trim(), back: backInput.value.trim(), subject });
+    localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
+    
     frontInput.value = ''; backInput.value = '';
-    currentCardIndex = flashcardDeck.length - 1; isShowingFront = true;
+    currentSubjectFilter = subject;
+    currentCardIndex = getFilteredDeck().length - 1; 
+    isShowingFront = true;
     renderFlashcardPlayer();
   });
 }
@@ -595,6 +692,7 @@ if (generateFlashcardsBtn) {
     displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating flashcards...</p>";
 
     setTimeout(() => {
+      const subject = getSelectedSubject();
       let basePool = [
         { front: "What are atoms?", back: "Basic building blocks of all matter in the universe." },
         { front: "What is an atom's nucleus?", back: "A heavy center made of positively charged protons and neutral neutrons." },
@@ -605,20 +703,17 @@ if (generateFlashcardsBtn) {
         { front: "What is the charge of a neutron?", back: "Neutrally charged particles inside the nucleus." },
         { front: "How are elements ordered?", back: "On the periodic table based on their atomic number." },
         { front: "What are chemical bonds?", back: "Formed when atoms share or exchange outer electrons." },
-        { front: "What are molecules?", back: "Structures created when multiple atoms combine together." },
-        { front: "What is everything made of?", back: "Incredibly tiny particles." },
-        { front: "What determines chemical identity?", back: "The specific count of core protons." },
-        { front: "How do electrons move?", back: "At high speeds in complex regions or shells." },
-        { front: "What is atomic mass concentrated in?", back: "The heavy central nucleus." },
-        { front: "What constructs our physical world?", back: "Endless configurations of microscopic atomic interactions." },
-        { front: "What is carbon?", back: "A chemical element differing by its number of protons." },
-        { front: "What is hydrogen?", back: "A basic chemical element represented by atomic structure." },
-        { front: "What is a gold atom?", back: "A precious metallic chemical element." },
-        { front: "Do atoms interact?", back: "Yes, through microscopic combinations building the physical world." },
-        { front: "What is velocity of electrons?", back: "They move at very high speeds around the core." }
+        { front: "What are molecules?", back: "Structures created when multiple atoms combine together." }
       ];
-      flashcardDeck = basePool.slice(0, count);
-      currentCardIndex = 0; isShowingFront = true;
+      
+      const newCards = basePool.slice(0, count).map(card => ({ ...card, subject }));
+      flashcardDeck = flashcardDeck.concat(newCards);
+      localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
+      
+      currentSubjectFilter = subject;
+      currentCardIndex = getFilteredDeck().length - newCards.length; 
+      isShowingFront = true;
+      notesEl.value = '';
       renderFlashcardPlayer();
     }, 50);
   });
