@@ -177,39 +177,41 @@ window.toggleScheduleVisibility = function() {
   else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
 };
 
-// --- HELPER: CLEAN TERM-DEFINITION EXTRACTION ---
-function extractCleanConcepts(notes) {
+// --- HELPER: ADVANCED TEXTBOOK PARSER ---
+function extractProfessionalPairs(notes) {
   let sentences = notes.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 5);
   if (sentences.length === 0) sentences = [notes];
 
-  let concepts = [];
+  let pairs = [];
 
   sentences.forEach(sentence => {
-    // Check for "is" or "are" definitions (e.g. "Birds are warm-blooded vertebrates")
-    if (sentence.includes(' are ') || sentence.includes(' is ')) {
-      let parts = sentence.split(/\b(are|is)\b/i);
+    // Clean up punctuation
+    let cleanSentence = sentence.replace(/["]+/g, '');
+    
+    // Try splitting by "are" or "is" to get a clean Subject and Definition
+    if (cleanSentence.includes(' are ') || cleanSentence.includes(' is ')) {
+      let parts = cleanSentence.split(/\b(are|is)\b/i);
       if (parts.length >= 3) {
         let subject = parts[0].trim();
         let description = parts.slice(1).join(' ').trim();
         if (subject.length > 1 && description.length > 3) {
-          concepts.push({ term: subject, definition: description });
+          pairs.push({ term: subject, definition: description });
         }
       }
     }
 
-    // Split by commas for secondary clauses
-    let subClauses = sentence.split(',').map(c => c.trim()).filter(c => c.length > 4);
+    // Fallback: Use sentence clauses separated by commas
+    let subClauses = cleanSentence.split(',').map(c => c.trim()).filter(c => c.length > 6);
     if (subClauses.length > 1) {
-      let coreSubject = subClauses[0].split(' ').slice(0, 3).join(' ');
-      concepts.push({ term: coreSubject, definition: sentence });
+      pairs.push({ term: subClauses[0], definition: cleanSentence });
     } else {
-      let words = sentence.split(' ');
-      let shortTerm = words.slice(0, Math.min(3, words.length)).join(' ');
-      concepts.push({ term: shortTerm, definition: sentence });
+      let words = cleanSentence.split(' ');
+      let coreTerm = words.slice(0, Math.min(3, words.length)).join(' ');
+      pairs.push({ term: coreTerm, definition: cleanSentence });
     }
   });
 
-  return concepts;
+  return pairs;
 }
 
 // --- SMART CURRICULUM QUIZ GENERATOR ---
@@ -231,40 +233,40 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>Building clean test questions...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>Generating professional assessment...</p>";
 
     setTimeout(() => {
-      let concepts = extractCleanConcepts(notes);
+      let pairs = extractProfessionalPairs(notes);
       currentQuizQuestions = [];
 
       if (activityType.toLowerCase().includes('match')) {
-        let pairs = concepts.map(c => ({ term: c.term, definition: c.definition }));
-        while(pairs.length < count) {
-          pairs.push({ term: `Term ${pairs.length + 1}`, definition: concepts[pairs.length % concepts.length].definition });
+        let matchPairs = pairs.map(p => ({ term: p.term, definition: p.definition }));
+        while(matchPairs.length < count) {
+          matchPairs.push({ term: `Topic ${matchPairs.length + 1}`, definition: pairs[matchPairs.length % pairs.length].definition });
         }
-        currentQuizQuestions = [{ type: "matching", pairs: pairs.slice(0, count) }];
+        currentQuizQuestions = [{ type: "matching", pairs: matchPairs.slice(0, count) }];
 
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        let questions = concepts.map(c => `Explain or define: "${c.term}"`);
+        let questions = pairs.map(p => `Explain the significance or role of: ${p.term}`);
         while(questions.length < count) {
-          questions.push(`Describe the role or function of: "${concepts[questions.length % concepts.length].term}"`);
+          questions.push(`Describe the characteristics associated with: ${pairs[questions.length % pairs.length].term}`);
         }
         currentQuizQuestions.push({
           type: "worksheet",
           questions: questions.slice(0, count),
-          answers: concepts.map(c => c.definition).slice(0, count)
+          answers: pairs.map(p => p.definition).slice(0, count)
         });
 
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
-        currentQuizQuestions = concepts.slice(0, count).map((item, idx) => {
+        currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
           let words = item.definition.split(' ');
-          let targetWord = words.find(w => w.length > 4) || words[0];
+          let targetWord = words.find(w => w.length > 5) || words[0];
           let cleanTarget = targetWord.replace(/[^a-zA-Z]/g, '');
           let maskedDef = item.definition.replace(new RegExp(`\\b${targetWord}\\b`, 'i'), '_____');
 
           return {
             type: "blank",
-            question: `Fill in the blank: "${maskedDef}"`,
+            question: `Fill in the blank: ${maskedDef}`,
             answer: cleanTarget
           };
         });
@@ -278,20 +280,20 @@ if (generateContentBtn) {
         }
 
       } else {
-        // Professional MCQ Style with clean, short answer options
-        currentQuizQuestions = concepts.slice(0, count).map((item, idx) => {
+        // Professional Multiple Choice Question (MCQ) Style
+        currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
           let correctAns = item.term;
-          let otherTerms = concepts.filter((_, i) => i !== idx).map(c => c.term);
+          let otherTerms = pairs.filter((_, i) => i !== idx).map(p => p.term);
           
           while(otherTerms.length < 3) {
-            otherTerms.push(`Option ${otherTerms.length + 1}`);
+            otherTerms.push(`Alternative Concept ${otherTerms.length + 1}`);
           }
           otherTerms.sort(() => Math.random() - 0.5);
 
           let options = [correctAns, otherTerms[0], otherTerms[1], otherTerms[2]].sort(() => Math.random() - 0.5);
 
           return {
-            question: `Which of the following best fits this description: "${item.definition}"?`,
+            question: `In relation to your study notes, which concept or subject corresponds to the following detail: "${item.definition}"?`,
             options: options,
             answer: correctAns
           };
@@ -672,7 +674,7 @@ if (addManualCardBtn) {
   });
 }
 
-// --- SMART DYNAMIC FLASHCARD GENERATOR (CLEAN TERMS) ---
+// --- DYNAMIC FLASHCARD GENERATOR ---
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
@@ -684,15 +686,15 @@ if (generateFlashcardsBtn) {
     const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
     if (!notes) return;
 
-    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating clean flashcards...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating flashcards...</p>";
 
     setTimeout(() => {
       const subject = getSelectedSubject();
-      let concepts = extractCleanConcepts(notes);
+      let pairs = extractProfessionalPairs(notes);
 
       let newCards = [];
-      for (let i = 0; i < Math.min(count, concepts.length); i++) {
-        let item = concepts[i];
+      for (let i = 0; i < Math.min(count, pairs.length); i++) {
+        let item = pairs[i];
         newCards.push({
           front: item.term,
           back: item.definition,
@@ -704,7 +706,7 @@ if (generateFlashcardsBtn) {
         let idx = newCards.length;
         newCards.push({
           front: `Concept ${idx + 1}`,
-          back: concepts[idx % concepts.length].definition,
+          back: pairs[idx % pairs.length].definition,
           subject: subject
         });
       }
