@@ -118,7 +118,7 @@ if (addTaskBtn && taskInput) {
 
 // --- ACTIVITY LOG & ANALYTICS ---
 function recordActivity(type, amount) {
-  activityLog.push({ type, amount, date: new Date().toISOString() });
+  activityLog.push({ type, amount, date: new Date().toISOString() };
   localStorage.setItem('study_activity_log', JSON.stringify(activityLog));
   updateAnalyticsDisplay();
 }
@@ -177,37 +177,51 @@ window.toggleScheduleVisibility = function() {
   else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
 };
 
-// --- HELPER: ADVANCED TEXTBOOK PARSER ---
-function extractProfessionalPairs(notes) {
+// --- HELPER: CLEAN TEXTBOOK QUESTION PARSER ---
+function extractCleanQuizPairs(notes) {
   let sentences = notes.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 5);
   if (sentences.length === 0) sentences = [notes];
 
   let pairs = [];
 
   sentences.forEach(sentence => {
-    // Clean up punctuation
-    let cleanSentence = sentence.replace(/["]+/g, '');
-    
-    // Try splitting by "are" or "is" to get a clean Subject and Definition
-    if (cleanSentence.includes(' are ') || cleanSentence.includes(' is ')) {
+    let cleanSentence = sentence.replace(/["]+/g, '').trim();
+
+    // Look for definitions containing "are" or "is"
+    if (/\b(are|is)\b/i.test(cleanSentence)) {
       let parts = cleanSentence.split(/\b(are|is)\b/i);
       if (parts.length >= 3) {
         let subject = parts[0].trim();
-        let description = parts.slice(1).join(' ').trim();
-        if (subject.length > 1 && description.length > 3) {
-          pairs.push({ term: subject, definition: description });
+        let property = parts.slice(2).join(' ').trim();
+        
+        // Ensure we capture a clean subject noun and property description
+        if (subject.length > 1 && property.length > 3) {
+          pairs.push({
+            term: subject,
+            definition: property,
+            fullSentence: cleanSentence
+          });
+          return;
         }
       }
     }
 
-    // Fallback: Use sentence clauses separated by commas
-    let subClauses = cleanSentence.split(',').map(c => c.trim()).filter(c => c.length > 6);
+    // Fallback split by clause
+    let subClauses = cleanSentence.split(',').map(c => c.trim()).filter(c => c.length > 5);
     if (subClauses.length > 1) {
-      pairs.push({ term: subClauses[0], definition: cleanSentence });
+      pairs.push({
+        term: subClauses[0],
+        definition: subClauses.slice(1).join(', '),
+        fullSentence: cleanSentence
+      });
     } else {
       let words = cleanSentence.split(' ');
-      let coreTerm = words.slice(0, Math.min(3, words.length)).join(' ');
-      pairs.push({ term: coreTerm, definition: cleanSentence });
+      let term = words.slice(0, 2).join(' ');
+      pairs.push({
+        term: term,
+        definition: cleanSentence,
+        fullSentence: cleanSentence
+      });
     }
   });
 
@@ -233,10 +247,10 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>Generating professional assessment...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>Generating quiz questions...</p>";
 
     setTimeout(() => {
-      let pairs = extractProfessionalPairs(notes);
+      let pairs = extractCleanQuizPairs(notes);
       currentQuizQuestions = [];
 
       if (activityType.toLowerCase().includes('match')) {
@@ -247,26 +261,26 @@ if (generateContentBtn) {
         currentQuizQuestions = [{ type: "matching", pairs: matchPairs.slice(0, count) }];
 
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        let questions = pairs.map(p => `Explain the significance or role of: ${p.term}`);
+        let questions = pairs.map(p => `Explain or describe: ${p.term}`);
         while(questions.length < count) {
-          questions.push(`Describe the characteristics associated with: ${pairs[questions.length % pairs.length].term}`);
+          questions.push(`What is the role or characteristic of: ${pairs[questions.length % pairs.length].term}?`);
         }
         currentQuizQuestions.push({
           type: "worksheet",
           questions: questions.slice(0, count),
-          answers: pairs.map(p => p.definition).slice(0, count)
+          answers: pairs.map(p => p.fullSentence).slice(0, count)
         });
 
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
         currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
-          let words = item.definition.split(' ');
+          let words = item.fullSentence.split(' ');
           let targetWord = words.find(w => w.length > 5) || words[0];
           let cleanTarget = targetWord.replace(/[^a-zA-Z]/g, '');
-          let maskedDef = item.definition.replace(new RegExp(`\\b${targetWord}\\b`, 'i'), '_____');
+          let maskedDef = item.fullSentence.replace(new RegExp(`\\b${targetWord}\\b`, 'i'), '_____');
 
           return {
             type: "blank",
-            question: `Fill in the blank: ${maskedDef}`,
+            question: `Fill in the blank: "${maskedDef}"`,
             answer: cleanTarget
           };
         });
@@ -280,20 +294,20 @@ if (generateContentBtn) {
         }
 
       } else {
-        // Professional Multiple Choice Question (MCQ) Style
+        // Professional Multiple Choice Question (MCQ) Style with Clean Sentences
         currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
           let correctAns = item.term;
           let otherTerms = pairs.filter((_, i) => i !== idx).map(p => p.term);
           
           while(otherTerms.length < 3) {
-            otherTerms.push(`Alternative Concept ${otherTerms.length + 1}`);
+            otherTerms.push(`Concept ${otherTerms.length + 1}`);
           }
           otherTerms.sort(() => Math.random() - 0.5);
 
           let options = [correctAns, otherTerms[0], otherTerms[1], otherTerms[2]].sort(() => Math.random() - 0.5);
 
           return {
-            question: `In relation to your study notes, which concept or subject corresponds to the following detail: "${item.definition}"?`,
+            question: `Which subject or creature is described by the following characteristic: "${item.definition}"?`,
             options: options,
             answer: correctAns
           };
@@ -690,14 +704,14 @@ if (generateFlashcardsBtn) {
 
     setTimeout(() => {
       const subject = getSelectedSubject();
-      let pairs = extractProfessionalPairs(notes);
+      let pairs = extractCleanQuizPairs(notes);
 
       let newCards = [];
       for (let i = 0; i < Math.min(count, pairs.length); i++) {
         let item = pairs[i];
         newCards.push({
           front: item.term,
-          back: item.definition,
+          back: item.fullSentence,
           subject: subject
         });
       }
@@ -706,7 +720,7 @@ if (generateFlashcardsBtn) {
         let idx = newCards.length;
         newCards.push({
           front: `Concept ${idx + 1}`,
-          back: pairs[idx % pairs.length].definition,
+          back: pairs[idx % pairs.length].fullSentence,
           subject: subject
         });
       }
