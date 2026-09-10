@@ -260,33 +260,37 @@ if (generateContentBtn) {
         }
 
       } else {
-        // Smarter MCQ Style focused on key concepts and definitions
-        currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
+        // Smarter MCQ Style: Uses other sentences from your notes as realistic distractors
+        currentQuizQuestions = sentences.map((sent, idx) => {
           let words = sent.split(' ');
           let keySubject = words.slice(0, 4).join(' ');
-          if (keySubject.length > 30) keySubject = words.slice(0, 2).join(' ');
+          if (keySubject.length > 25) keySubject = words.slice(0, 2).join(' ');
 
-          let distractors = [
-            `It functions entirely through static, non-adaptive structural containment.`,
-            `It operates independently of environmental energy transfers or metabolic processes.`,
-            `It relies strictly on secondary non-cellular regulatory mechanisms.`
-          ];
+          let otherSentences = sentences.filter((_, i) => i !== idx);
+          otherSentences.sort(() => Math.random() - 0.5);
 
-          let wrongOptions = distractors.sort(() => Math.random() - 0.5).slice(0, 3);
-          
+          let distractors = [];
+          for (let i = 0; i < 3; i++) {
+            if (otherSentences[i]) {
+              distractors.push(otherSentences[i]);
+            } else {
+              distractors.push(`Related characteristic concerning ${keySubject.toLowerCase()}`);
+            }
+          }
+
           let options = [
             sent, 
-            wrongOptions[0], 
-            wrongOptions[1], 
-            wrongOptions[2]
+            distractors[0], 
+            distractors[1], 
+            distractors[2]
           ].sort(() => Math.random() - 0.5);
           
           return {
-            question: `Which of the following best describes the core function or characteristic of: "${keySubject}..."?`,
+            question: `Which of the following statements is correct regarding: "${keySubject}..."?`,
             options: options,
             answer: sent
           };
-        });
+        }).slice(0, count);
       }
 
       currentQuizIndex = 0;
