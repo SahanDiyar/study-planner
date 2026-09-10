@@ -118,7 +118,7 @@ if (addTaskBtn && taskInput) {
 
 // --- ACTIVITY LOG & ANALYTICS ---
 function recordActivity(type, amount) {
-  activityLog.push({ type, amount, date: new Date().toISOString() };
+  activityLog.push({ type, amount, date: new Date().toISOString() });
   localStorage.setItem('study_activity_log', JSON.stringify(activityLog));
   updateAnalyticsDisplay();
 }
@@ -187,14 +187,12 @@ function extractCleanQuizPairs(notes) {
   sentences.forEach(sentence => {
     let cleanSentence = sentence.replace(/["]+/g, '').trim();
 
-    // Look for definitions containing "are" or "is"
     if (/\b(are|is)\b/i.test(cleanSentence)) {
       let parts = cleanSentence.split(/\b(are|is)\b/i);
       if (parts.length >= 3) {
         let subject = parts[0].trim();
         let property = parts.slice(2).join(' ').trim();
         
-        // Ensure we capture a clean subject noun and property description
         if (subject.length > 1 && property.length > 3) {
           pairs.push({
             term: subject,
@@ -206,7 +204,6 @@ function extractCleanQuizPairs(notes) {
       }
     }
 
-    // Fallback split by clause
     let subClauses = cleanSentence.split(',').map(c => c.trim()).filter(c => c.length > 5);
     if (subClauses.length > 1) {
       pairs.push({
@@ -294,7 +291,6 @@ if (generateContentBtn) {
         }
 
       } else {
-        // Professional Multiple Choice Question (MCQ) Style with Clean Sentences
         currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
           let correctAns = item.term;
           let otherTerms = pairs.filter((_, i) => i !== idx).map(p => p.term);
