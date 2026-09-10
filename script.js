@@ -260,26 +260,29 @@ if (generateContentBtn) {
         }
 
       } else {
-        // Smarter MCQ Style with distinct conceptual focus and options
+        // Smarter MCQ Style focused on key concepts and definitions
         currentQuizQuestions = sentences.slice(0, count).map((sent, idx) => {
           let words = sent.split(' ');
-          let keySubject = words.slice(0, 3).join(' ');
-          if (keySubject.length > 25) keySubject = words[0] + " " + words[1];
+          let keySubject = words.slice(0, 4).join(' ');
+          if (keySubject.length > 30) keySubject = words.slice(0, 2).join(' ');
 
-          let wrongOptions = sentences.filter((_, i) => i !== idx);
-          let distractor1 = wrongOptions[0] ? `They primarily rely on static non-respiratory tissue.` : "They operate entirely through terrestrial adaptation mechanisms.";
-          let distractor2 = wrongOptions[1] ? `They lack specialized structural boundaries.` : "They maintain closed-circuit aerial respiratory systems.";
-          let distractor3 = "They function independently of environmental water balance.";
+          let distractors = [
+            `It functions entirely through static, non-adaptive structural containment.`,
+            `It operates independently of environmental energy transfers or metabolic processes.`,
+            `It relies strictly on secondary non-cellular regulatory mechanisms.`
+          ];
 
+          let wrongOptions = distractors.sort(() => Math.random() - 0.5).slice(0, 3);
+          
           let options = [
             sent, 
-            distractor1, 
-            distractor2, 
-            distractor3
+            wrongOptions[0], 
+            wrongOptions[1], 
+            wrongOptions[2]
           ].sort(() => Math.random() - 0.5);
           
           return {
-            question: `Regarding ${keySubject}..., which of the following is accurate?`,
+            question: `Which of the following best describes the core function or characteristic of: "${keySubject}..."?`,
             options: options,
             answer: sent
           };
