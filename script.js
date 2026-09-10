@@ -177,19 +177,58 @@ window.toggleScheduleVisibility = function() {
   else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
 };
 
-// --- HELPER: EXTRACT CONCISE CHUNKS & PHRASES ---
+// --- HELPER: TRUE ACADEMIC CONCEPT EXTRACTION ---
 function extractConciseConcepts(notes) {
-  // Break notes into sentences or clause chunks
-  let rawChunks = notes.split(/[,.;!?]+/).map(c => c.trim()).filter(c => c.length > 3);
-  if (rawChunks.length === 0) rawChunks = [notes];
-  
-  // Clean up and format into short concept pairs
-  return rawChunks.map((chunk, idx) => {
-    let words = chunk.split(' ');
-    let term = words.slice(0, 3).join(' ');
-    let definition = chunk;
-    return { term, definition };
+  // Split strictly by complete sentences first
+  let sentences = notes.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 5);
+  if (sentences.length === 0) sentences = [notes];
+
+  let structuredConcepts = [];
+
+  sentences.forEach(sentence => {
+    // Look for definition keywords or patterns (e.g. "are", "is", "defined as", commas)
+    if (sentence.includes('are') || sentence.includes('is')) {
+      let parts = sentence.split(/\b(are|is)\b/i);
+      if (parts.length >= 3) {
+        let subjectPart = parts[0].trim();
+        let predicatePart = parts.slice(1).join(' ').trim();
+        if (subjectPart.length > 2 && predicatePart.length > 3) {
+          structuredConcepts.push({
+            term: subjectPart,
+            definition: predicatePart
+          });
+        }
+      }
+    }
+    
+    // Fallback: Break by full clauses separated by commas or semicolons
+    let clauses = sentence.split(/[,;]+/).map(c => c.trim()).filter(c => c.length > 5);
+    if (clauses.length > 1) {
+      clauses.forEach((clause, idx) => {
+        if (idx === 0) {
+          structuredConcepts.push({
+            term: clause,
+            definition: sentence
+          });
+        } else {
+          structuredConcepts.push({
+            term: `Key property ${idx}`,
+            definition: clause
+          });
+        }
+      });
+    } else if (structuredConcepts.length === 0 || !structuredConcepts.some(c => c.definition === sentence)) {
+      // General full sentence fallback
+      let words = sentence.split(' ');
+      let coreTerm = words.slice(0, Math.min(4, words.length)).join(' ');
+      structuredConcepts.push({
+        term: coreTerm,
+        definition: sentence
+      });
+    }
   });
+
+  return structuredConcepts;
 }
 
 // --- SMART CURRICULUM QUIZ GENERATOR ---
@@ -211,7 +250,7 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>Formulating concise study questions...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>Formulating professional test questions...</p>";
 
     setTimeout(() => {
       let concepts = extractConciseConcepts(notes);
@@ -220,14 +259,14 @@ if (generateContentBtn) {
       if (activityType.toLowerCase().includes('match')) {
         let pairs = concepts.map(c => ({ term: c.term, definition: c.definition }));
         while(pairs.length < count) {
-          pairs.push({ term: `Concept ${pairs.length + 1}`, definition: concepts[pairs.length % concepts.length].definition });
+          pairs.push({ term: `Core Term ${pairs.length + 1}`, definition: concepts[pairs.length % concepts.length].definition });
         }
         currentQuizQuestions = [{ type: "matching", pairs: pairs.slice(0, count) }];
 
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        let questions = concepts.map(c => `What is the key fact about: "${c.term}"?`);
+        let questions = concepts.map(c => `Explain the concept or significance of: "${c.term}"`);
         while(questions.length < count) {
-          questions.push(`Describe the role or property of: "${concepts[questions.length % concepts.length].term}"`);
+          questions.push(`Describe the role or characteristic of: "${concepts[questions.length % concepts.length].term}"`);
         }
         currentQuizQuestions.push({
           type: "worksheet",
@@ -238,9 +277,8 @@ if (generateContentBtn) {
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
         currentQuizQuestions = concepts.slice(0, count).map((item, idx) => {
           let words = item.definition.split(' ');
-          let targetWord = words.length > 2 ? words[Math.floor(words.length / 2)] : words[0];
+          let targetWord = words.find(w => w.length > 5) || words[Math.floor(words.length / 2)] || "concept";
           let cleanTarget = targetWord.replace(/[^a-zA-Z]/g, '');
-          if(!cleanTarget) cleanTarget = "term";
 
           let maskedDef = item.definition.replace(new RegExp(`\\b${targetWord}\\b`, 'i'), '_____');
 
@@ -254,31 +292,31 @@ if (generateContentBtn) {
         while(currentQuizQuestions.length < count) {
           currentQuizQuestions.push({
             type: "blank",
-            question: `Complete the key biological/scientific principle: _____`,
+            question: `Complete the scientific statement: _____`,
             answer: "system"
           });
         }
 
       } else {
-        // Crisp, Short-Option MCQ Style (Trivia style)
+        // Professional Multiple Choice Question (MCQ) Style
         currentQuizQuestions = concepts.slice(0, count).map((item, idx) => {
-          let correctAns = item.term;
+          let correctAns = item.definition;
           let otherConcepts = concepts.filter((_, i) => i !== idx);
           otherConcepts.sort(() => Math.random() - 0.5);
 
           let distractors = [];
           for (let i = 0; i < 3; i++) {
             if (otherConcepts[i]) {
-              distractors.push(otherConcepts[i].term);
+              distractors.push(otherConcepts[i].definition);
             } else {
-              distractors.push(`Alternative ${i + 1}`);
+              distractors.push(`Alternative scientific classification or characteristic ${i + 1}`);
             }
           }
 
           let options = [correctAns, distractors[0], distractors[1], distractors[2]].sort(() => Math.random() - 0.5);
 
           return {
-            question: `Which option correctly identifies or relates to: "${item.definition.slice(0, 35)}..."?`,
+            question: `Which of the following accurately describes or defines: "${item.term}"?`,
             options: options,
             answer: correctAns
           };
@@ -322,7 +360,7 @@ function renderQuizQuestion() {
     const shuffledTerms = [...q.pairs].map(p => p.term).sort(() => Math.random() - 0.5);
 
     html += `
-      <h3 style="color: inherit; margin-top: 0; border-bottom: 2px solid ${isDark ? '#334155' : '#cbd5e1'}; padding-bottom: 8px;">Matching Quiz</h3>
+      <h3 style="color: inherit; margin-top: 0; border-bottom: 2px solid ${isDark ? '#334155' : '#cbd5e1'}; padding-bottom: 8px;">Matching Assessment</h3>
       <p style="color: ${isDark ? '#94a3b8' : '#64748b'}; font-size: 0.9rem; margin-bottom: 15px;">Click a term on the left, then click its corresponding definition on the right:</p>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="matching-board">
         <div style="display: flex; flex-direction: column; gap: 10px;" id="terms-column">
@@ -330,7 +368,7 @@ function renderQuizQuestion() {
           ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, window.decodeURIComponent('${encodeURIComponent(t)}'))" data-term="${t}" class="match-term-card" style="padding: 10px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-weight: 500; color: inherit;">${t}</div>`).join('')}
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;" id="defs-column">
-          <h4 style="margin: 0; color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 0.95rem;">Descriptions</h4>
+          <h4 style="margin: 0; color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 0.95rem;">Definitions / Descriptions</h4>
           ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, window.decodeURIComponent('${encodeURIComponent(d)}'))" data-def="${d}" class="match-def-card" style="padding: 10px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: inherit;">${d}</div>`).join('')}
         </div>
       </div>
@@ -478,7 +516,7 @@ window.handleOptionClick = function(buttonElement, optionIndex) {
     userScore++;
   } else {
     buttonElement.style.background = "#991b1b"; buttonElement.style.borderColor = "#ef4444";
-    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Answer: ${correct}`;
+    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${correct}`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
@@ -659,7 +697,7 @@ if (addManualCardBtn) {
   });
 }
 
-// --- SMART DYNAMIC FLASHCARD GENERATOR (CONCISE) ---
+// --- SMART DYNAMIC FLASHCARD GENERATOR (PROFESSIONAL) ---
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
@@ -671,7 +709,7 @@ if (generateFlashcardsBtn) {
     const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
     if (!notes) return;
 
-    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating clean flashcards...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating professional flashcards...</p>";
 
     setTimeout(() => {
       const subject = getSelectedSubject();
