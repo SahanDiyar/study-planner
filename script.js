@@ -10,8 +10,8 @@ if (lastActiveDate !== todayStr) {
   localStorage.setItem('study_last_active_date', todayStr);
 }
 
-// --- FLASHCARD STATE ---
-let flashcardDeck = JSON.parse(localStorage.getItem('study_flashcard_deck')) || [];
+// --- FLASHCARD STATE (NOT SAVED) ---
+let flashcardDeck = [];
 let currentCardIndex = 0;
 let isShowingFront = true;
 
@@ -168,13 +168,26 @@ window.saveScheduleTable = function() {
   if (feedback) { feedback.innerText = "Saved successfully!"; setTimeout(() => { feedback.innerText = ""; }, 2000); }
 };
 
+// Hidden by default, toggles correctly with button text update
 window.toggleScheduleVisibility = function() {
   const wrapper = document.getElementById('schedule-content-wrapper');
   const btn = document.getElementById('toggle-schedule-btn');
   if (!wrapper || !btn) return;
-  if (wrapper.style.display === 'none') { wrapper.style.display = 'block'; btn.innerText = 'Hide Schedule'; }
-  else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
+  
+  if (wrapper.style.display === 'none' || wrapper.style.display === '') {
+    wrapper.style.display = 'block';
+    btn.innerText = 'Hide Schedule';
+  } else {
+    wrapper.style.display = 'none';
+    btn.innerText = 'View Schedule';
+  }
 };
+
+// Ensure schedule starts hidden on load
+const scheduleWrapper = document.getElementById('schedule-content-wrapper');
+const scheduleBtn = document.getElementById('toggle-schedule-btn');
+if (scheduleWrapper) scheduleWrapper.style.display = 'none';
+if (scheduleBtn) scheduleBtn.innerText = 'View Schedule';
 
 // --- SIMPLE SENTENCE PARSER ---
 function extractQuizPairs(notes) {
@@ -495,7 +508,7 @@ window.handleBlankSubmit = function() {
 
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 
-// --- FLASHCARD SYSTEM (ORIGINAL) ---
+// --- FLASHCARD SYSTEM (SESSION ONLY, NO SUBJECTS) ---
 const modeAutoBtn = document.getElementById('mode-auto-btn');
 const modeManualBtn = document.getElementById('mode-manual-btn');
 const autoContainer = document.getElementById('flashcard-auto-container');
@@ -566,7 +579,6 @@ window.nextCard = function() {
 
 window.deleteCurrentCard = function(index) {
   flashcardDeck.splice(index, 1);
-  localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
   currentCardIndex = 0;
   renderFlashcardPlayer();
 };
@@ -579,7 +591,6 @@ if (addManualCardBtn) {
     if (!frontInput || !backInput || !frontInput.value.trim() || !backInput.value.trim()) return;
     
     flashcardDeck.push({ front: frontInput.value.trim(), back: backInput.value.trim() });
-    localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
     
     frontInput.value = ''; backInput.value = '';
     currentCardIndex = flashcardDeck.length - 1;
@@ -620,7 +631,6 @@ if (generateFlashcardsBtn) {
       }
 
       flashcardDeck = flashcardDeck.concat(newCards);
-      localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
       
       currentCardIndex = flashcardDeck.length - newCards.length;
       isShowingFront = true;
