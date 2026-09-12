@@ -22,7 +22,7 @@ let currentCorrectAnswer = "";
 
 // --- API KEY HELPER ---
 function getApiKey() {
-  return "AQ.Ab8N6JKIW7udOfsK7_RT4iAgGYFGJvnDVNObuX4DFvhSO2w";
+  return "AQ.Ab8RN6Jdtf6omjiuCV10qUkJ8SnZpalvcHUJ80jKLxO5GBK5Zw";
 }
 
 // --- THEME / DARK MODE MANAGER ---
