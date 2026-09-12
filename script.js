@@ -10,7 +10,7 @@ if (lastActiveDate !== todayStr) {
   localStorage.setItem('study_last_active_date', todayStr);
 }
 
-// --- FLASHCARD STATE (SESSION ONLY, NO SUBJECTS) ---
+// --- FLASHCARD STATE ---
 let flashcardDeck = [];
 let currentCardIndex = 0;
 let isShowingFront = true;
@@ -18,11 +18,13 @@ let isShowingFront = true;
 let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
-let currentMatchingPairs = [];
 let currentCorrectAnswer = "";
 
-let selectedTerm = null;
-let userMatches = {};
+// --- API KEY HELPER ---
+function getApiKey() {
+  // Your API key is embedded here for local use
+  return "AQ.Ab8N6JKIW7udOfsK7_RT4iAgGYFGJvnDVNObuX4DFvhSO2w";
+}
 
 // --- THEME / DARK MODE MANAGER ---
 let currentTheme = localStorage.getItem('study_hub_theme') || 'light';
@@ -133,7 +135,7 @@ function updateAnalyticsDisplay() {
   if (flashcardsEl) flashcardsEl.innerText = totalFlashcards;
 }
 
-// --- WEEKLY TABLE SCHEDULE LOGIC ---
+// --- WEEKLY SCHEDULE ---
 let weeklyScheduleData = JSON.parse(localStorage.getItem('study_weekly_schedule_grid')) || {
   Sunday: Array(7).fill(''), Monday: Array(7).fill(''), Tuesday: Array(7).fill(''), Wednesday: Array(7).fill(''), Thursday: Array(7).fill('')
 };
@@ -187,345 +189,132 @@ const scheduleBtn = document.getElementById('toggle-schedule-btn');
 if (scheduleWrapper) scheduleWrapper.style.display = 'none';
 if (scheduleBtn) scheduleBtn.innerText = 'View Schedule';
 
-// --- INTELLIGENT CONTENT PARSER ---
-function parseTextIntoItems(notes, requestedCount) {
-  // Split text by sentences or logical punctuation (. ! ? ;)
-  let rawSegments = notes.split(/(?<=[.!?;\n])\s+/).map(s => s.replace(/[\r\n]+/g, ' ').trim()).filter(s => s.length > 3);
-  if (rawSegments.length === 0) rawSegments = [notes];
-
-  let items = [];
-  
-  // Create primary items from actual text segments
-  rawSegments.forEach((seg, idx) => {
-    let words = seg.split(' ');
-    // Pick a sensible chunk of the sentence as a prompt/term (e.g., first 4 words or up to 30 chars)
-    let term = words.slice(0, Math.min(4, words.length)).join(' ');
-    if (term.length > 35) term = term.substring(0, 32) + '...';
-    
-    items.push({
-      term: term,
-      definition: seg,
-      fullSentence: seg
-    });
-  });
-
-  // If the user requested more items than sentences available, intelligently cycle and sub-divide existing segments
-  let safetyCounter = 0;
-  while (items.length < requestedCount && safetyCounter < 50) {
-    let targetIdx = safetyCounter % rawSegments.length;
-    let baseSeg = rawSegments[targetIdx];
-    let words = baseSeg.split(' ');
-    
-    // Create variation by taking a different slice of the sentence
-    let startWord = (safetyCounter * 2) % Math.max(1, words.length - 2);
-    let termSlice = words.slice(startWord, startWord + 4).join(' ');
-    if (!termSlice) termSlice = baseSeg.substring(0, 20);
-
-    items.push({
-      term: termSlice,
-      definition: baseSeg,
-      fullSentence: baseSeg
-    });
-    safetyCounter++;
+// --- GEMINI API CALL FUNCTION ---
+async function callGeminiAPI(promptText) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("API Key is required.");
   }
 
-  return items;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: promptText }] }]
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const textOutput = data.candidates[0].content.parts[0].text;
+  
+  let cleanJson = textOutput.replace(/```json/g, '').replace(/```/g, '').trim();
+  return JSON.parse(cleanJson);
 }
 
-// --- QUIZ GENERATOR ---
+// --- AI QUIZ GENERATOR ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
     const notesEl = document.getElementById('notes-input');
-    const activityTypeEl = document.getElementById('quiz-type');
     const countEl = document.getElementById('question-count');
     const displayArea = document.getElementById('content-display-area');
 
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
-    const activityType = activityTypeEl ? activityTypeEl.value : 'Multiple Choice (MCQ)';
     const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
 
     if (!notes) {
-      displayArea.innerHTML = "<p style='color: #ef4444;'>Please enter some notes first.</p>";
+      displayArea.innerHTML = "<p style='color: #ef4444;'>Please enter some study notes first.</p>";
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>Generating quiz questions...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Gemini is analyzing your text and generating smart questions...</p>";
 
-    setTimeout(() => {
-      let items = parseTextIntoItems(notes, count);
-      currentQuizQuestions = [];
+    try {
+      const prompt = `Based on the following text, generate exactly ${count} multiple-choice quiz questions. 
+      Return ONLY valid JSON in this exact array format:
+      [
+        {
+          "question": "Clear question text?",
+          "options": ["Correct Answer", "Wrong Option 1", "Wrong Option 2", "Wrong Option 3"],
+          "answer": "Correct Answer"
+        }
+      ]
+      Text to analyze: ${notes}`;
 
-      if (activityType.toLowerCase().includes('match')) {
-        let matchPairs = items.slice(0, count).map(p => ({ term: p.term, definition: p.definition }));
-        currentQuizQuestions = [{ type: "matching", pairs: matchPairs }];
-
-      } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        let subset = items.slice(0, count);
-        currentQuizQuestions.push({
-          type: "worksheet",
-          questions: subset.map(p => `Explain or summarize: "${p.term}"`),
-          answers: subset.map(p => p.fullSentence)
-        });
-
-      } else if (activityType.includes('Blank') || activityType.includes('fill')) {
-        currentQuizQuestions = items.slice(0, count).map((item) => {
-          let words = item.fullSentence.split(' ');
-          let targetWord = words.find(w => w.length > 4) || words[0];
-          let cleanTarget = targetWord.replace(/[^a-zA-Z]/g, '');
-          let maskedDef = item.fullSentence.replace(new RegExp(`\\b${targetWord}\\b`, 'i'), '_____');
-
-          return {
-            type: "blank",
-            question: `Fill in the blank: "${maskedDef}"`,
-            answer: cleanTarget
-          };
-        });
-
-      } else {
-        // Standard Multiple Choice using ONLY real sentences from the text as distractors
-        let activeItems = items.slice(0, count);
-        let allSentences = items.map(i => i.fullSentence);
-
-        currentQuizQuestions = activeItems.map((item, idx) => {
-          let correctAns = item.fullSentence;
-          
-          // Pull wrong answers strictly from other sentences in the user's text
-          let otherOptions = allSentences.filter(s => s !== correctAns);
-          if (otherOptions.length < 3) {
-            // If text is too short, generate variations from existing sentences
-            otherOptions.push(`Context note regarding: ${item.term}`);
-            otherOptions.push(`Related excerpt: ${item.definition.substring(0, 30)}...`);
-          }
-          otherOptions.sort(() => Math.random() - 0.5);
-
-          let options = [correctAns, otherOptions[0], otherOptions[1], otherOptions[2]].filter(Boolean).sort(() => Math.random() - 0.5);
-
-          return {
-            question: `Based on your notes, which statement is correct regarding: "${item.term}"?`,
-            options: options,
-            answer: correctAns
-          };
-        });
-      }
-
+      const result = await callGeminiAPI(prompt);
+      currentQuizQuestions = result;
       currentQuizIndex = 0;
       userScore = 0;
       renderQuizQuestion();
       recordActivity('quizzes', 1);
-    }, 50);
+    } catch (error) {
+      displayArea.innerHTML = `<p style='color: #ef4444;'>Error generating quiz: ${error.message}. Please check your API key.</p>`;
+    }
   });
 }
 
 function renderQuizQuestion() {
   const displayArea = document.getElementById('content-display-area');
   if (!displayArea) return;
-
   const isDark = currentTheme === 'dark';
 
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `
       <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'};">
-        <h3 style="color: #2563eb; margin-top: 0;">Quiz Completed! 🎉 Final Score: ${userScore}/${currentQuizQuestions.length || 1}</h3>
-        <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Generate New Quiz</button>
+        <h3 style="color: #2563eb; margin-top: 0;">Quiz Completed! 🎉 Final Score: ${userScore}/${currentQuizQuestions.length}</h3>
+        <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Start Over</button>
       </div>
     `;
     return;
   }
 
   const q = currentQuizQuestions[currentQuizIndex];
-  const type = q.type || (q.questions ? 'worksheet' : (q.pairs ? 'matching' : 'mcq'));
+  currentCorrectAnswer = q.answer;
 
-  let html = `<div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px;">`;
-
-  if (type === 'matching' && q.pairs) {
-    selectedTerm = null;
-    userMatches = {};
-    currentMatchingPairs = q.pairs;
-    const shuffledDefs = [...q.pairs].map(p => p.definition).sort(() => Math.random() - 0.5);
-    const shuffledTerms = [...q.pairs].map(p => p.term).sort(() => Math.random() - 0.5);
-
-    html += `
-      <h3 style="color: inherit; margin-top: 0; border-bottom: 2px solid ${isDark ? '#334155' : '#cbd5e1'}; padding-bottom: 8px;">Matching Assessment</h3>
-      <p style="color: ${isDark ? '#94a3b8' : '#64748b'}; font-size: 0.9rem; margin-bottom: 15px;">Click a term on the left, then click its corresponding definition on the right:</p>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="matching-board">
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <h4 style="margin: 0; color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 0.95rem;">Terms</h4>
-          ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, window.decodeURIComponent('${encodeURIComponent(t)}'))" data-term="${t}" class="match-term-card" style="padding: 10px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-weight: 500; color: inherit;">${t}</div>`).join('')}
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <h4 style="margin: 0; color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 0.95rem;">Definitions</h4>
-          ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, window.decodeURIComponent('${encodeURIComponent(d)}'))" data-def="${d}" class="match-def-card" style="padding: 10px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: inherit;">${d}</div>`).join('')}
-        </div>
-      </div>
-      <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
-      <div style="text-align: right; margin-top: 20px;">
-        <button id="matching-submit-btn" onclick="handleMatchingSubmit()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit Matching</button>
-      </div>
-    `;
-  } else if (type === 'worksheet' && q.questions) {
-    html += `
-      <h3 style="color: inherit; margin-top: 0; border-bottom: 2px solid ${isDark ? '#334155' : '#cbd5e1'}; padding-bottom: 8px;">Study Worksheet</h3>
-      <div style="margin-bottom: 20px; max-height: 300px; overflow-y: auto;">
-        <ol style="padding-left: 20px; line-height: 1.6; color: inherit;">
-          ${q.questions.map(quest => `<li style="margin-bottom: 8px;">${quest}</li>`).join('')}
-        </ol>
-      </div>
-      <div style="background: ${isDark ? '#1e293b' : '#f1f5f9'}; padding: 15px; border-radius: 6px; border: 1px dashed ${isDark ? '#475569' : '#94a3b8'}; max-height: 200px; overflow-y: auto;">
-        <h4 style="color: ${isDark ? '#cbd5e1' : '#475569'}; margin-top: 0; margin-bottom: 10px;">Answer Key:</h4>
-        <ul style="padding-left: 20px; line-height: 1.6; color: inherit; list-style-type: disc;">
-          ${q.answers.map(ans => `<li style="margin-bottom: 6px;">${ans}</li>`).join('')}
-        </ul>
-      </div>
-      <div style="text-align: right; margin-top: 20px;">
-        <button onclick="nextQuestion()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Finish Quiz →</button>
-      </div>
-    `;
-  } else if (type === 'blank') {
-    currentCorrectAnswer = q.answer;
-    html += `
-      <div style="font-size: 0.85rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
-      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <input type="text" id="blank-answer-input" placeholder="Type missing keyword..." style="flex: 1; padding: 10px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; background: ${isDark ? '#1e293b' : 'transparent'}; color: inherit;">
-        <button onclick="handleBlankSubmit()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Submit</button>
-      </div>
-      <div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div>
-      <div style="text-align: right; margin-top: 15px;">
-        <button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next →</button>
-      </div>
-    `;
-  } else {
-    html += `
+  let html = `
+    <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px;">
       <div style="font-size: 0.85rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
       <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
-    `;
-    q.options.forEach((opt, idx) => {
-      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, ${idx})" style="text-align: left; padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.95rem; color: inherit;">${opt}</button>`;
-    });
-    html += `</div><div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next →</button></div>`;
-  }
+  `;
 
-  html += `</div>`;
+  let shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+
+  shuffledOptions.forEach((opt, idx) => {
+    html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.95rem; color: inherit;">${opt}</button>`;
+  });
+
+  html += `</div><div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next →</button></div></div>`;
   displayArea.innerHTML = html;
 }
 
-window.selectMatchingTerm = function(element, term) {
-  document.querySelectorAll('.match-term-card').forEach(card => {
-    card.style.borderColor = currentTheme === 'dark' ? '#475569' : '#cbd5e1';
-    card.style.background = currentTheme === 'dark' ? '#1e293b' : 'white';
-  });
-  element.style.borderColor = '#2563eb';
-  element.style.background = currentTheme === 'dark' ? '#1e3a8a' : '#eff6ff';
-  selectedTerm = term;
-};
-
-window.selectMatchingDef = function(element, definition) {
-  if (!selectedTerm) {
-    alert("Please select a Term on the left first!");
-    return;
-  }
-  userMatches[selectedTerm] = definition;
-  
-  document.querySelectorAll('.match-def-card').forEach(card => {
-    if (card.getAttribute('data-def') === definition) {
-      card.style.borderColor = '#3b82f6';
-      card.style.background = currentTheme === 'dark' ? '#1e3a8a' : '#eff6ff';
-    }
-  });
-  
-  document.querySelectorAll('.match-term-card').forEach(card => {
-    if (card.getAttribute('data-term') === selectedTerm) {
-      card.style.borderColor = '#3b82f6';
-      card.style.background = currentTheme === 'dark' ? '#1e3a8a' : '#eff6ff';
-    }
-  });
-  selectedTerm = null;
-};
-
-window.handleMatchingSubmit = function() {
-  const feedbackEl = document.getElementById('quiz-feedback');
-  let correctCount = 0;
-  const pairs = currentMatchingPairs;
-  const correctMap = {};
-  pairs.forEach(p => { correctMap[p.term] = p.definition.trim(); });
-
-  document.querySelectorAll('.match-term-card').forEach(termCard => {
-    const term = termCard.getAttribute('data-term');
-    const userChosenDef = userMatches[term];
-
-    if (!userChosenDef) {
-      termCard.style.borderColor = currentTheme === 'dark' ? '#475569' : '#cbd5e1';
-      termCard.style.background = currentTheme === 'dark' ? '#1e293b' : '#f1f5f9';
-      return;
-    }
-
-    if (userChosenDef.trim() === correctMap[term]) {
-      correctCount++;
-      termCard.style.borderColor = '#10b981';
-      termCard.style.background = '#065f46';
-      termCard.innerHTML = `✅ ${term}`;
-    } else {
-      termCard.style.borderColor = '#ef4444';
-      termCard.style.background = '#991b1b';
-      termCard.innerHTML = `❌ ${term}`;
-    }
-  });
-
-  userScore = correctCount;
-  if (feedbackEl) {
-    feedbackEl.style.color = correctCount === pairs.length ? "#34d399" : "#f87171";
-    feedbackEl.innerText = `Matched ${correctCount} out of ${pairs.length} correctly!`;
-  }
-
-  const submitBtn = document.getElementById('matching-submit-btn');
-  if (submitBtn) {
-    submitBtn.innerText = "Next Activity →";
-    submitBtn.onclick = () => { currentQuizIndex++; renderQuizQuestion(); };
-  }
-};
-
-window.handleOptionClick = function(buttonElement, optionIndex) {
-  const q = currentQuizQuestions[currentQuizIndex];
-  const chosen = q.options[optionIndex];
-  const correct = q.answer;
-
+window.handleOptionClick = function(buttonElement, encodedChosen) {
+  const chosen = decodeURIComponent(encodedChosen);
   document.querySelectorAll('.quiz-option-btn').forEach(btn => btn.disabled = true);
   const feedbackEl = document.getElementById('quiz-feedback');
   const nextBtn = document.getElementById('next-q-btn');
 
-  if (chosen.trim() === correct.trim()) {
+  if (chosen.trim() === currentCorrectAnswer.trim()) {
     buttonElement.style.background = "#065f46"; buttonElement.style.borderColor = "#10b981";
     feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!";
     userScore++;
   } else {
     buttonElement.style.background = "#991b1b"; buttonElement.style.borderColor = "#ef4444";
-    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${correct}`;
-  }
-  if (nextBtn) nextBtn.style.display = 'inline-block';
-};
-
-window.handleBlankSubmit = function() {
-  const inputEl = document.getElementById('blank-answer-input');
-  const feedbackEl = document.getElementById('quiz-feedback');
-  const nextBtn = document.getElementById('next-q-btn');
-  if (!inputEl) return;
-
-  const val = inputEl.value.trim();
-  inputEl.disabled = true;
-  if (val.toLowerCase() === currentCorrectAnswer.toLowerCase()) {
-    feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!"; userScore++;
-  } else {
-    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Expected: "${currentCorrectAnswer}"`;
+    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
 
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 
-// --- FLASHCARD SYSTEM (SESSION ONLY, NO SUBJECTS) ---
+// --- AI FLASHCARD GENERATOR ---
 function renderFlashcardPlayer() {
   const displayArea = document.getElementById('flashcard-display-area');
   if (!displayArea) return;
@@ -536,10 +325,7 @@ function renderFlashcardPlayer() {
     return;
   }
 
-  if (currentCardIndex >= flashcardDeck.length) {
-    currentCardIndex = 0;
-  }
-
+  if (currentCardIndex >= flashcardDeck.length) currentCardIndex = 0;
   const currentCard = flashcardDeck[currentCardIndex];
 
   displayArea.innerHTML = `
@@ -569,12 +355,7 @@ window.nextCard = function() {
     recordActivity('flashcards', 1); 
   } 
 };
-
-window.deleteCurrentCard = function(index) {
-  flashcardDeck.splice(index, 1);
-  currentCardIndex = 0;
-  renderFlashcardPlayer();
-};
+window.deleteCurrentCard = function(index) { flashcardDeck.splice(index, 1); currentCardIndex = 0; renderFlashcardPlayer(); };
 
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
@@ -587,21 +368,28 @@ if (generateFlashcardsBtn) {
     const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
     if (!notes) return;
 
-    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating flashcards...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>🤖 Generating flashcards with Gemini...</p>";
 
-    setTimeout(() => {
-      let items = parseTextIntoItems(notes, count);
-      let newCards = items.slice(0, count).map(item => ({
-        front: item.term,
-        back: item.fullSentence
-      }));
+    try {
+      const prompt = `Based on the following text, generate exactly ${count} flashcards. 
+      Return ONLY valid JSON in this exact array format:
+      [
+        {
+          "front": "Key term or concept",
+          "back": "Detailed definition or explanation"
+        }
+      ]
+      Text to analyze: ${notes}`;
 
-      flashcardDeck = flashcardDeck.concat(newCards);
-      currentCardIndex = flashcardDeck.length - newCards.length;
+      const result = await callGeminiAPI(prompt);
+      flashcardDeck = flashcardDeck.concat(result);
+      currentCardIndex = flashcardDeck.length - result.length;
       isShowingFront = true;
       notesEl.value = '';
       renderFlashcardPlayer();
-    }, 50);
+    } catch (error) {
+      displayArea.innerHTML = `<p style='color: #ef4444;'>Error generating flashcards: ${error.message}</p>`;
+    }
   });
 }
 
