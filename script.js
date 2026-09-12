@@ -10,11 +10,10 @@ if (lastActiveDate !== todayStr) {
   localStorage.setItem('study_last_active_date', todayStr);
 }
 
-// --- FLASHCARD STATE & SUBJECT TAGGING ---
+// --- FLASHCARD STATE ---
 let flashcardDeck = JSON.parse(localStorage.getItem('study_flashcard_deck')) || [];
 let currentCardIndex = 0;
 let isShowingFront = true;
-let currentSubjectFilter = 'All';
 
 let currentQuizQuestions = [];
 let currentQuizIndex = 0;
@@ -177,55 +176,25 @@ window.toggleScheduleVisibility = function() {
   else { wrapper.style.display = 'none'; btn.innerText = 'View Schedule'; }
 };
 
-// --- HELPER: CLEAN TEXTBOOK QUESTION PARSER ---
-function extractCleanQuizPairs(notes) {
+// --- SIMPLE SENTENCE PARSER ---
+function extractQuizPairs(notes) {
   let sentences = notes.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 5);
   if (sentences.length === 0) sentences = [notes];
 
   let pairs = [];
-
-  sentences.forEach(sentence => {
-    let cleanSentence = sentence.replace(/["]+/g, '').trim();
-
-    if (/\b(are|is)\b/i.test(cleanSentence)) {
-      let parts = cleanSentence.split(/\b(are|is)\b/i);
-      if (parts.length >= 3) {
-        let subject = parts[0].trim();
-        let property = parts.slice(2).join(' ').trim();
-        
-        if (subject.length > 1 && property.length > 3) {
-          pairs.push({
-            term: subject,
-            definition: property,
-            fullSentence: cleanSentence
-          });
-          return;
-        }
-      }
-    }
-
-    let subClauses = cleanSentence.split(',').map(c => c.trim()).filter(c => c.length > 5);
-    if (subClauses.length > 1) {
-      pairs.push({
-        term: subClauses[0],
-        definition: subClauses.slice(1).join(', '),
-        fullSentence: cleanSentence
-      });
-    } else {
-      let words = cleanSentence.split(' ');
-      let term = words.slice(0, 2).join(' ');
-      pairs.push({
-        term: term,
-        definition: cleanSentence,
-        fullSentence: cleanSentence
-      });
-    }
+  sentences.forEach((sentence, idx) => {
+    let words = sentence.split(' ');
+    let term = words.slice(0, 3).join(' ');
+    pairs.push({
+      term: term || `Concept ${idx + 1}`,
+      definition: sentence,
+      fullSentence: sentence
+    });
   });
-
   return pairs;
 }
 
-// --- SMART CURRICULUM QUIZ GENERATOR ---
+// --- QUIZ GENERATOR ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
@@ -247,7 +216,7 @@ if (generateContentBtn) {
     displayArea.innerHTML = "<p style='color: #94a3b8;'>Generating quiz questions...</p>";
 
     setTimeout(() => {
-      let pairs = extractCleanQuizPairs(notes);
+      let pairs = extractQuizPairs(notes);
       currentQuizQuestions = [];
 
       if (activityType.toLowerCase().includes('match')) {
@@ -258,9 +227,9 @@ if (generateContentBtn) {
         currentQuizQuestions = [{ type: "matching", pairs: matchPairs.slice(0, count) }];
 
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        let questions = pairs.map(p => `Explain or describe: ${p.term}`);
+        let questions = pairs.map(p => `Explain: ${p.term}`);
         while(questions.length < count) {
-          questions.push(`What is the role or characteristic of: ${pairs[questions.length % pairs.length].term}?`);
+          questions.push(`Describe the details regarding: ${pairs[questions.length % pairs.length].term}`);
         }
         currentQuizQuestions.push({
           type: "worksheet",
@@ -271,7 +240,7 @@ if (generateContentBtn) {
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
         currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
           let words = item.fullSentence.split(' ');
-          let targetWord = words.find(w => w.length > 5) || words[0];
+          let targetWord = words.find(w => w.length > 4) || words[0];
           let cleanTarget = targetWord.replace(/[^a-zA-Z]/g, '');
           let maskedDef = item.fullSentence.replace(new RegExp(`\\b${targetWord}\\b`, 'i'), '_____');
 
@@ -285,25 +254,25 @@ if (generateContentBtn) {
         while(currentQuizQuestions.length < count) {
           currentQuizQuestions.push({
             type: "blank",
-            question: `Complete the scientific statement: _____`,
-            answer: "system"
+            question: `Complete the sentence: _____`,
+            answer: "notes"
           });
         }
 
       } else {
         currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
-          let correctAns = item.term;
-          let otherTerms = pairs.filter((_, i) => i !== idx).map(p => p.term);
+          let correctAns = item.fullSentence;
+          let otherOptions = pairs.filter((_, i) => i !== idx).map(p => p.fullSentence);
           
-          while(otherTerms.length < 3) {
-            otherTerms.push(`Concept ${otherTerms.length + 1}`);
+          while(otherOptions.length < 3) {
+            otherOptions.push(`Alternative statement ${otherOptions.length + 1} based on study material.`);
           }
-          otherTerms.sort(() => Math.random() - 0.5);
+          otherOptions.sort(() => Math.random() - 0.5);
 
-          let options = [correctAns, otherTerms[0], otherTerms[1], otherTerms[2]].sort(() => Math.random() - 0.5);
+          let options = [correctAns, otherOptions[0], otherOptions[1], otherOptions[2]].sort(() => Math.random() - 0.5);
 
           return {
-            question: `Which subject or creature is described by the following characteristic: "${item.definition}"?`,
+            question: `Based on your notes, which statement is correct regarding: "${item.term}"?`,
             options: options,
             answer: correctAns
           };
@@ -526,7 +495,7 @@ window.handleBlankSubmit = function() {
 
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 
-// --- FLASHCARD SYSTEM WITH SUBJECT TAGS ---
+// --- FLASHCARD SYSTEM (ORIGINAL) ---
 const modeAutoBtn = document.getElementById('mode-auto-btn');
 const modeManualBtn = document.getElementById('mode-manual-btn');
 const autoContainer = document.getElementById('flashcard-auto-container');
@@ -551,87 +520,27 @@ if (modeAutoBtn && modeManualBtn) {
   });
 }
 
-window.handleSubjectDropdownChange = function() {
-  const select = document.getElementById('flashcard-subject-select');
-  const customInput = document.getElementById('custom-subject-input');
-  if (!select || !customInput) return;
-
-  if (select.value === 'Custom') {
-    customInput.style.display = 'block';
-    customInput.focus();
-  } else {
-    customInput.style.display = 'none';
-    customInput.value = '';
-  }
-};
-
-function getSelectedSubject() {
-  const select = document.getElementById('flashcard-subject-select');
-  const customInput = document.getElementById('custom-subject-input');
-  if (!select) return 'General';
-
-  if (select.value === 'Custom' && customInput && customInput.value.trim()) {
-    return customInput.value.trim();
-  }
-  return select.value || 'General';
-}
-
-function updateSubjectFilterDropdown() {
-  const filterSelect = document.getElementById('filter-subject-select');
-  if (!filterSelect) return;
-
-  const subjects = [...new Set(flashcardDeck.map(card => card.subject || 'General'))];
-  
-  let optionsHtml = `<option value="All" style="background: inherit; color: inherit;">All Subjects (${flashcardDeck.length})</option>`;
-  subjects.forEach(subj => {
-    const count = flashcardDeck.filter(c => (c.subject || 'General') === subj).length;
-    const selected = currentSubjectFilter === subj ? 'selected' : '';
-    optionsHtml += `<option value="${subj}" ${selected} style="background: inherit; color: inherit;">${subj} (${count})</option>`;
-  });
-  
-  filterSelect.innerHTML = optionsHtml;
-}
-
-window.handleFilterChange = function() {
-  const filterSelect = document.getElementById('filter-subject-select');
-  if (!filterSelect) return;
-  currentSubjectFilter = filterSelect.value;
-  currentCardIndex = 0;
-  isShowingFront = true;
-  renderFlashcardPlayer();
-};
-
-function getFilteredDeck() {
-  if (currentSubjectFilter === 'All') return flashcardDeck;
-  return flashcardDeck.filter(card => (card.subject || 'General') === currentSubjectFilter);
-}
-
 function renderFlashcardPlayer() {
   const displayArea = document.getElementById('flashcard-display-area');
   if (!displayArea) return;
   const isDark = currentTheme === 'dark';
 
-  updateSubjectFilterDropdown();
-  const activeDeck = getFilteredDeck();
-
-  if (activeDeck.length === 0) {
-    displayArea.innerHTML = `<p style='color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 15px;'>No flashcards found for "${currentSubjectFilter}".</p>`;
+  if (flashcardDeck.length === 0) {
+    displayArea.innerHTML = `<p style='color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 15px;'>No flashcards available. Add some manually or generate them above!</p>`;
     return;
   }
 
-  if (currentCardIndex >= activeDeck.length) {
+  if (currentCardIndex >= flashcardDeck.length) {
     currentCardIndex = 0;
   }
 
-  const currentCard = activeDeck[currentCardIndex];
-  const cardSubject = currentCard.subject || 'General';
+  const currentCard = flashcardDeck[currentCardIndex];
 
   displayArea.innerHTML = `
     <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; cursor: pointer; position: relative;" onclick="flipCardContent()">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 0.75rem; background: #7c3aed; color: white; padding: 2px 8px; border-radius: 12px; font-weight: 500;">${cardSubject}</span>
-        <div style="font-size: 0.8rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: 600;">Card ${currentCardIndex + 1} of ${activeDeck.length}</div>
-        <button onclick="event.stopPropagation(); deleteCurrentCard(${flashcardDeck.indexOf(currentCard)})" title="Delete Card" style="background: transparent; color: #ef4444; border: none; cursor: pointer; font-size: 0.85rem;">🗑️</button>
+        <div style="font-size: 0.8rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
+        <button onclick="event.stopPropagation(); deleteCurrentCard(${currentCardIndex})" title="Delete Card" style="background: transparent; color: #ef4444; border: none; cursor: pointer; font-size: 0.85rem;">🗑️</button>
       </div>
       <div style="font-size: 1.1rem; color: inherit; margin: 15px 0; font-weight: 500;">${isShowingFront ? currentCard.front : currentCard.back}</div>
       <div style="font-size: 0.75rem; color: ${isDark ? '#64748b' : '#94a3b8'};">(Click card to flip)</div>
@@ -647,8 +556,7 @@ function renderFlashcardPlayer() {
 window.flipCardContent = function() { isShowingFront = !isShowingFront; renderFlashcardPlayer(); };
 window.prevCard = function() { if (currentCardIndex > 0) { currentCardIndex--; isShowingFront = true; renderFlashcardPlayer(); } };
 window.nextCard = function() { 
-  const activeDeck = getFilteredDeck();
-  if (currentCardIndex < activeDeck.length - 1) { 
+  if (currentCardIndex < flashcardDeck.length - 1) { 
     currentCardIndex++; 
     isShowingFront = true; 
     renderFlashcardPlayer(); 
@@ -656,13 +564,11 @@ window.nextCard = function() {
   } 
 };
 
-window.deleteCurrentCard = function(absoluteIndex) {
-  if (absoluteIndex > -1) {
-    flashcardDeck.splice(absoluteIndex, 1);
-    localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
-    currentCardIndex = 0;
-    renderFlashcardPlayer();
-  }
+window.deleteCurrentCard = function(index) {
+  flashcardDeck.splice(index, 1);
+  localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
+  currentCardIndex = 0;
+  renderFlashcardPlayer();
 };
 
 const addManualCardBtn = document.getElementById('add-manual-card-btn');
@@ -672,19 +578,16 @@ if (addManualCardBtn) {
     const backInput = document.getElementById('manual-back');
     if (!frontInput || !backInput || !frontInput.value.trim() || !backInput.value.trim()) return;
     
-    const subject = getSelectedSubject();
-    flashcardDeck.push({ front: frontInput.value.trim(), back: backInput.value.trim(), subject });
+    flashcardDeck.push({ front: frontInput.value.trim(), back: backInput.value.trim() });
     localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
     
     frontInput.value = ''; backInput.value = '';
-    currentSubjectFilter = subject;
-    currentCardIndex = getFilteredDeck().length - 1; 
+    currentCardIndex = flashcardDeck.length - 1;
     isShowingFront = true;
     renderFlashcardPlayer();
   });
 }
 
-// --- DYNAMIC FLASHCARD GENERATOR ---
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
@@ -699,16 +602,12 @@ if (generateFlashcardsBtn) {
     displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating flashcards...</p>";
 
     setTimeout(() => {
-      const subject = getSelectedSubject();
-      let pairs = extractCleanQuizPairs(notes);
-
+      let pairs = extractQuizPairs(notes);
       let newCards = [];
       for (let i = 0; i < Math.min(count, pairs.length); i++) {
-        let item = pairs[i];
         newCards.push({
-          front: item.term,
-          back: item.fullSentence,
-          subject: subject
+          front: pairs[i].term,
+          back: pairs[i].fullSentence
         });
       }
 
@@ -716,16 +615,14 @@ if (generateFlashcardsBtn) {
         let idx = newCards.length;
         newCards.push({
           front: `Concept ${idx + 1}`,
-          back: pairs[idx % pairs.length].fullSentence,
-          subject: subject
+          back: pairs[idx % pairs.length].fullSentence
         });
       }
 
       flashcardDeck = flashcardDeck.concat(newCards);
       localStorage.setItem('study_flashcard_deck', JSON.stringify(flashcardDeck));
       
-      currentSubjectFilter = subject;
-      currentCardIndex = getFilteredDeck().length - newCards.length; 
+      currentCardIndex = flashcardDeck.length - newCards.length;
       isShowingFront = true;
       notesEl.value = '';
       renderFlashcardPlayer();
