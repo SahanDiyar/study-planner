@@ -182,29 +182,54 @@ window.toggleScheduleVisibility = function() {
   }
 };
 
-// Start schedule hidden
 const scheduleWrapper = document.getElementById('schedule-content-wrapper');
 const scheduleBtn = document.getElementById('toggle-schedule-btn');
 if (scheduleWrapper) scheduleWrapper.style.display = 'none';
 if (scheduleBtn) scheduleBtn.innerText = 'View Schedule';
 
-// --- CLEAN SENTENCE PARSER ---
-function extractQuizPairs(notes) {
-  let sentences = notes.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 5);
-  if (sentences.length === 0) sentences = [notes];
+// --- INTELLIGENT CONTENT PARSER ---
+function parseTextIntoItems(notes, requestedCount) {
+  // Split text by sentences or logical punctuation (. ! ? ;)
+  let rawSegments = notes.split(/(?<=[.!?;\n])\s+/).map(s => s.replace(/[\r\n]+/g, ' ').trim()).filter(s => s.length > 3);
+  if (rawSegments.length === 0) rawSegments = [notes];
 
-  let pairs = [];
-  sentences.forEach((sentence, idx) => {
-    let cleanSentence = sentence.replace(/[\r\n]+/g, ' ').trim();
-    let words = cleanSentence.split(' ');
-    let term = words.slice(0, 3).join(' ');
-    pairs.push({
-      term: term || `Concept ${idx + 1}`,
-      definition: cleanSentence,
-      fullSentence: cleanSentence
+  let items = [];
+  
+  // Create primary items from actual text segments
+  rawSegments.forEach((seg, idx) => {
+    let words = seg.split(' ');
+    // Pick a sensible chunk of the sentence as a prompt/term (e.g., first 4 words or up to 30 chars)
+    let term = words.slice(0, Math.min(4, words.length)).join(' ');
+    if (term.length > 35) term = term.substring(0, 32) + '...';
+    
+    items.push({
+      term: term,
+      definition: seg,
+      fullSentence: seg
     });
   });
-  return pairs;
+
+  // If the user requested more items than sentences available, intelligently cycle and sub-divide existing segments
+  let safetyCounter = 0;
+  while (items.length < requestedCount && safetyCounter < 50) {
+    let targetIdx = safetyCounter % rawSegments.length;
+    let baseSeg = rawSegments[targetIdx];
+    let words = baseSeg.split(' ');
+    
+    // Create variation by taking a different slice of the sentence
+    let startWord = (safetyCounter * 2) % Math.max(1, words.length - 2);
+    let termSlice = words.slice(startWord, startWord + 4).join(' ');
+    if (!termSlice) termSlice = baseSeg.substring(0, 20);
+
+    items.push({
+      term: termSlice,
+      definition: baseSeg,
+      fullSentence: baseSeg
+    });
+    safetyCounter++;
+  }
+
+  return items;
 }
 
 // --- QUIZ GENERATOR ---
@@ -229,29 +254,23 @@ if (generateContentBtn) {
     displayArea.innerHTML = "<p style='color: #94a3b8;'>Generating quiz questions...</p>";
 
     setTimeout(() => {
-      let pairs = extractQuizPairs(notes);
+      let items = parseTextIntoItems(notes, count);
       currentQuizQuestions = [];
 
       if (activityType.toLowerCase().includes('match')) {
-        let matchPairs = pairs.map(p => ({ term: p.term, definition: p.definition }));
-        while(matchPairs.length < count) {
-          matchPairs.push({ term: `Topic ${matchPairs.length + 1}`, definition: pairs[matchPairs.length % pairs.length].definition });
-        }
-        currentQuizQuestions = [{ type: "matching", pairs: matchPairs.slice(0, count) }];
+        let matchPairs = items.slice(0, count).map(p => ({ term: p.term, definition: p.definition }));
+        currentQuizQuestions = [{ type: "matching", pairs: matchPairs }];
 
       } else if (activityType.includes('Worksheet') || activityType.includes('Q&A')) {
-        let questions = pairs.map(p => `Explain: ${p.term}`);
-        while(questions.length < count) {
-          questions.push(`Describe the details regarding: ${pairs[questions.length % pairs.length].term}`);
-        }
+        let subset = items.slice(0, count);
         currentQuizQuestions.push({
           type: "worksheet",
-          questions: questions.slice(0, count),
-          answers: pairs.map(p => p.fullSentence).slice(0, count)
+          questions: subset.map(p => `Explain or summarize: "${p.term}"`),
+          answers: subset.map(p => p.fullSentence)
         });
 
       } else if (activityType.includes('Blank') || activityType.includes('fill')) {
-        currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
+        currentQuizQuestions = items.slice(0, count).map((item) => {
           let words = item.fullSentence.split(' ');
           let targetWord = words.find(w => w.length > 4) || words[0];
           let cleanTarget = targetWord.replace(/[^a-zA-Z]/g, '');
@@ -264,25 +283,24 @@ if (generateContentBtn) {
           };
         });
 
-        while(currentQuizQuestions.length < count) {
-          currentQuizQuestions.push({
-            type: "blank",
-            question: `Complete the sentence: _____`,
-            answer: "notes"
-          });
-        }
-
       } else {
-        currentQuizQuestions = pairs.slice(0, count).map((item, idx) => {
+        // Standard Multiple Choice using ONLY real sentences from the text as distractors
+        let activeItems = items.slice(0, count);
+        let allSentences = items.map(i => i.fullSentence);
+
+        currentQuizQuestions = activeItems.map((item, idx) => {
           let correctAns = item.fullSentence;
-          let otherOptions = pairs.filter((_, i) => i !== idx).map(p => p.fullSentence);
           
-          while(otherOptions.length < 3) {
-            otherOptions.push(`Alternative statement ${otherOptions.length + 1} based on study material.`);
+          // Pull wrong answers strictly from other sentences in the user's text
+          let otherOptions = allSentences.filter(s => s !== correctAns);
+          if (otherOptions.length < 3) {
+            // If text is too short, generate variations from existing sentences
+            otherOptions.push(`Context note regarding: ${item.term}`);
+            otherOptions.push(`Related excerpt: ${item.definition.substring(0, 30)}...`);
           }
           otherOptions.sort(() => Math.random() - 0.5);
 
-          let options = [correctAns, otherOptions[0], otherOptions[1], otherOptions[2]].sort(() => Math.random() - 0.5);
+          let options = [correctAns, otherOptions[0], otherOptions[1], otherOptions[2]].filter(Boolean).sort(() => Math.random() - 0.5);
 
           return {
             question: `Based on your notes, which statement is correct regarding: "${item.term}"?`,
@@ -572,22 +590,11 @@ if (generateFlashcardsBtn) {
     displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>Generating flashcards...</p>";
 
     setTimeout(() => {
-      let pairs = extractQuizPairs(notes);
-      let newCards = [];
-      for (let i = 0; i < Math.min(count, pairs.length); i++) {
-        newCards.push({
-          front: pairs[i].term,
-          back: pairs[i].fullSentence
-        });
-      }
-
-      while(newCards.length < count) {
-        let idx = newCards.length;
-        newCards.push({
-          front: `Concept ${idx + 1}`,
-          back: pairs[idx % pairs.length].fullSentence
-        });
-      }
+      let items = parseTextIntoItems(notes, count);
+      let newCards = items.slice(0, count).map(item => ({
+        front: item.term,
+        back: item.fullSentence
+      }));
 
       flashcardDeck = flashcardDeck.concat(newCards);
       currentCardIndex = flashcardDeck.length - newCards.length;
