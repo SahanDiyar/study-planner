@@ -5,37 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Study Hub</title>
 </head>
-<body id="body-layout" style="font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; transition: background 0.3s, color 0.3s;">
+<body id="body-layout" style="font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; color: #1e293b; margin: 0; padding: 20px; display: flex; justify-content: center;">
 
-  <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;">
+  <div style="width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 20px;">
 
-    <!-- TOP HEADER -->
-    <div class="theme-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; transition: background 0.3s, border 0.3s;">
+    <!-- Top Header & Dark Mode -->
+    <div class="theme-card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h1 style="margin: 0 0 10px 0; color: #7c3aed; font-size: 1.5rem;">AI Study Hub 🚀</h1>
-        <p style="margin: 0; color: #64748b; font-size: 0.9rem;" class="theme-text-sub">Manage tasks, track your schedule, and generate custom practice quizzes & flashcards.</p>
+        <h1 class="theme-text" style="margin: 0; font-size: 1.5rem; color: #334155;">AI Study Hub 🚀</h1>
+        <p class="theme-text-sub" style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">Manage tasks, track your schedule, and generate custom practice quizzes & flashcards.</p>
       </div>
-      <button id="theme-toggle-btn" onclick="toggleDarkMode()" style="background: #e2e8f0; color: #1e293b; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.85rem; height: fit-content; transition: background 0.2s;">🌙 Dark Mode</button>
+      <button id="theme-toggle-btn" onclick="toggleDarkMode()" style="background: #e2e8f0; color: #334155; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">🌙 Dark Mode</button>
     </div>
 
-    <!-- TASK MANAGER SECTION -->
-    <div class="theme-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: background 0.3s;">
-      <h2 style="margin-top: 0; font-size: 1.2rem; color: #334155;" class="theme-text">Task Manager</h2>
+    <!-- Task Manager Section -->
+    <div class="theme-card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+      <h3 class="theme-text" style="margin-top: 0; margin-bottom: 12px; color: #334155;">Task Manager</h3>
       <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <input type="text" id="task-input" placeholder="Add a new study task..." class="theme-input" style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; background: transparent; color: inherit;">
-        <button id="add-task-btn" style="background: #7c3aed; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Add Task</button>
+        <input type="text" id="task-input" class="theme-input" placeholder="Add a new study task..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem;">
+        <button id="add-task-btn" style="background: #7c3aed; color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">Add Task</button>
       </div>
-      <ul id="task-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+      <ul id="task-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;"></ul>
     </div>
 
-    <!-- WEEKLY SCHEDULE SECTION -->
-    <div class="theme-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: background 0.3s;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h2 style="margin: 0; font-size: 1.2rem; color: #334155;" class="theme-text">Weekly Schedule</h2>
-        <button id="toggle-schedule-btn" onclick="toggleScheduleVisibility()" style="background: #e2e8f0; color: #1e293b; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">Hide Schedule</button>
+    <!-- Weekly Schedule Section (Hidden by Default) -->
+    <div class="theme-card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="theme-text" style="margin: 0; color: #334155;">Weekly Schedule</h3>
+        <button id="toggle-schedule-btn" onclick="toggleScheduleVisibility()" style="background: #64748b; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">View Schedule</button>
       </div>
-      <div id="schedule-content-wrapper">
-        <div style="overflow-x: auto;">
+      
+      <div id="schedule-content-wrapper" style="display: none;">
+        <div style="overflow-x: auto; margin-bottom: 12px;">
           <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem;">
             <thead>
               <tr class="theme-table-header" style="background: #f8fafc; color: #475569;">
@@ -50,118 +51,78 @@
             <tbody id="schedule-table-body"></tbody>
           </table>
         </div>
-        <div style="margin-top: 10px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-          <span id="schedule-save-feedback" style="font-size: 0.85rem; color: #166534; font-weight: 500;"></span>
-          <button onclick="saveScheduleTable()" style="background: #10b981; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Save Schedule</button>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <button onclick="saveScheduleTable()" style="background: #10b981; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Save Schedule</button>
+          <span id="schedule-save-feedback" style="font-size: 0.85rem; color: #10b981; font-weight: 500;"></span>
         </div>
       </div>
     </div>
 
-    <!-- AI STUDY HUB (QUIZ GENERATOR) -->
-    <div class="theme-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: background 0.3s;">
-      <h2 style="margin-top: 0; font-size: 1.2rem; color: #334155;" class="theme-text">AI Study Hub (NotebookLM Style)</h2>
-      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;" class="theme-text-sub">Paste your study notes or paragraph below to generate custom practice questions:</p>
+    <!-- AI Study Hub (NotebookLM Style) -->
+    <div class="theme-card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+      <h3 class="theme-text" style="margin-top: 0; color: #334155;">AI Study Hub (NotebookLM Style)</h3>
+      <p class="theme-text-sub" style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px;">Paste your study notes or paragraph below to generate custom practice questions:</p>
       
-      <textarea id="notes-input" placeholder="Paste notes here..." class="theme-input" style="width: 100%; height: 90px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; margin-bottom: 15px; font-size: 0.9rem; background: transparent; color: inherit;"></textarea>
+      <textarea id="notes-input" class="theme-input" placeholder="Paste your study notes or text here..." style="width: 100%; height: 100px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; resize: vertical; margin-bottom: 12px;"></textarea>
 
-      <!-- QUIZ CONTROLS -->
-      <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 15px;">
-        <div>
-          <label for="quiz-type" style="font-weight: 500; font-size: 0.9rem;" class="theme-text">Quiz Type:</label>
-          <select id="quiz-type" class="theme-input" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; font-size: 0.9rem; background: transparent; color: inherit;">
-            <option value="Multiple Choice (MCQ)" style="background: inherit; color: inherit;">Multiple Choice (MCQ)</option>
-            <option value="Fill in the Blank" style="background: inherit; color: inherit;">Fill in the Blank</option>
-            <option value="Matching" style="background: inherit; color: inherit;">Matching</option>
-            <option value="Worksheet" style="background: inherit; color: inherit;">Study Worksheet</option>
+      <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+          <label class="theme-text-sub" style="font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px;">Quiz Type:</label>
+          <select id="quiz-type" class="theme-input" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: transparent; color: inherit;">
+            <option>Multiple Choice (MCQ)</option>
+            <option>Fill in the Blank</option>
+            <option>Matching Pairs</option>
+            <option>Study Worksheet & Q&A</option>
           </select>
         </div>
-
-        <div>
-          <label for="question-count" style="font-weight: 500; font-size: 0.9rem;" class="theme-text">Number of Questions:</label>
-          <select id="question-count" class="theme-input" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; font-size: 0.9rem; background: transparent; color: inherit;">
-            <option value="5" style="background: inherit; color: inherit;">5 Questions</option>
-            <option value="10" selected style="background: inherit; color: inherit;">10 Questions</option>
-            <option value="15" style="background: inherit; color: inherit;">15 Questions</option>
-            <option value="20" style="background: inherit; color: inherit;">20 Questions</option>
+        <div style="flex: 1; min-width: 200px;">
+          <label class="theme-text-sub" style="font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px;">Number of Questions:</label>
+          <select id="question-count" class="theme-input" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: transparent; color: inherit;">
+            <option value="5">5 Questions</option>
+            <option value="10" selected>10 Questions</option>
+            <option value="15">15 Questions</option>
           </select>
         </div>
       </div>
 
-      <button id="generate-content-btn" style="background: #7c3aed; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 15px;">Generate Quiz</button>
+      <button id="generate-content-btn" style="background: #7c3aed; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; margin-bottom: 15px;">Generate Quiz</button>
 
       <div id="content-display-area"></div>
     </div>
 
-    <!-- FLASHCARD STUDIO -->
-    <div class="theme-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: background 0.3s;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h2 style="margin: 0; font-size: 1.2rem; color: #334155;" class="theme-text">Flashcard Studio</h2>
-        <div style="display: flex; gap: 5px;">
-          <button id="mode-auto-btn" style="background: #7c3aed; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">AI Generate</button>
-          <button id="mode-manual-btn" style="background: #e2e8f0; color: #334155; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Manual Add</button>
-        </div>
-      </div>
-
-      <!-- SUBJECT SELECTION WRAPPER -->
-      <div style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-        <label for="flashcard-subject-select" style="font-weight: 500; font-size: 0.9rem;" class="theme-text">Subject / Tag:</label>
-        <div style="display: flex; gap: 10px;">
-          <select id="flashcard-subject-select" onchange="handleSubjectDropdownChange()" class="theme-input" style="flex: 1; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; background: transparent; color: inherit;">
-            <option value="Mathematics" style="background: inherit; color: inherit;">Mathematics</option>
-            <option value="Physics" style="background: inherit; color: inherit;">Physics</option>
-            <option value="English" style="background: inherit; color: inherit;">English</option>
-            <option value="Chemistry" style="background: inherit; color: inherit;">Chemistry</option>
-            <option value="Biology" style="background: inherit; color: inherit;">Biology</option>
-            <option value="Custom" style="background: inherit; color: inherit;">+ Add Custom Subject...</option>
-          </select>
-          <input type="text" id="custom-subject-input" placeholder="Type custom class name..." class="theme-input" style="flex: 1; display: none; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; background: transparent; color: inherit;">
-        </div>
-      </div>
-
-      <!-- AUTO CONTAINER -->
-      <div id="flashcard-auto-container">
-        <div style="margin-bottom: 10px;">
-          <label for="flashcard-count" style="font-weight: 500; font-size: 0.9rem;" class="theme-text">Number of Flashcards:</label>
-          <select id="flashcard-count" class="theme-input" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; font-size: 0.9rem; background: transparent; color: inherit;">
-            <option value="5" style="background: inherit; color: inherit;">5 Flashcards</option>
-            <option value="10" selected style="background: inherit; color: inherit;">10 Flashcards</option>
-            <option value="15" style="background: inherit; color: inherit;">15 Flashcards</option>
-            <option value="20" style="background: inherit; color: inherit;">20 Flashcards</option>
+    <!-- Flashcard Studio (Clean, No Subjects, Session-Only) -->
+    <div class="theme-card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+      <h3 class="theme-text" style="margin-top: 0; color: #334155;">Flashcard Studio</h3>
+      <p class="theme-text-sub" style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px;">Generate flashcards from your text to review during your session:</p>
+      
+      <div style="display: flex; gap: 15px; margin-bottom: 12px; align-items: center;">
+        <div style="flex: 1;">
+          <label class="theme-text-sub" style="font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px;">Number of Flashcards:</label>
+          <select id="flashcard-count" class="theme-input" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: transparent; color: inherit;">
+            <option value="5">5 Flashcards</option>
+            <option value="10" selected>10 Flashcards</option>
+            <option value="15">15 Flashcards</option>
           </select>
         </div>
-        <textarea id="flashcard-notes" placeholder="Paste text to generate flashcards..." class="theme-input" style="width: 100%; height: 70px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; font-size: 0.9rem; background: transparent; color: inherit;"></textarea>
-        <button id="generate-flashcards-btn" style="background: #7c3aed; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 15px;">Generate Flashcards</button>
       </div>
 
-      <!-- MANUAL CONTAINER -->
-      <div id="flashcard-manual-container" style="display: none; margin-bottom: 15px;">
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-          <input type="text" id="manual-front" placeholder="Front (Term / Question)" class="theme-input" style="flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; background: transparent; color: inherit;">
-          <input type="text" id="manual-back" placeholder="Back (Definition / Answer)" class="theme-input" style="flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; background: transparent; color: inherit;">
-        </div>
-        <button id="add-manual-card-btn" style="background: #10b981; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Add Card to Deck</button>
-      </div>
+      <textarea id="flashcard-notes" class="theme-input" placeholder="Paste text to generate flashcards..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; resize: vertical; margin-bottom: 12px;"></textarea>
 
-      <!-- FILTER BAR -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-top: 10px; border-top: 1px solid rgba(100,116,139,0.2);">
-        <span style="font-size: 0.85rem; font-weight: 500;" class="theme-text">Filter Deck:</span>
-        <select id="filter-subject-select" onchange="handleFilterChange()" class="theme-input" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem; background: transparent; color: inherit;">
-          <option value="All" style="background: inherit; color: inherit;">All Subjects</option>
-        </select>
-      </div>
+      <button id="generate-flashcards-btn" style="background: #7c3aed; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; margin-bottom: 15px;">Generate Flashcards</button>
 
       <div id="flashcard-display-area"></div>
     </div>
 
-    <!-- ANALYTICS METRICS -->
-    <div class="theme-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-around; text-align: center; transition: background 0.3s;">
+    <!-- Analytics Footer -->
+    <div class="theme-card" style="background: white; padding: 15px 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; justify-content: space-around; text-align: center;">
       <div>
-        <div id="completed-tasks-metric" style="font-size: 1.5rem; font-weight: bold; color: #7c3aed;">0</div>
-        <div style="font-size: 0.85rem; color: #64748b;" class="theme-text-sub">Completed Tasks</div>
+        <div id="completed-tasks-metric" style="font-size: 1.25rem; font-weight: bold; color: #7c3aed;">0</div>
+        <div class="theme-text-sub" style="font-size: 0.75rem; color: #64748b;">Completed Tasks</div>
       </div>
+      <div style="border-right: 1px solid #e2e8f0;"></div>
       <div>
-        <div id="flashcards-reviewed-metric" style="font-size: 1.5rem; font-weight: bold; color: #10b981;">0</div>
-        <div style="font-size: 0.85rem; color: #64748b;" class="theme-text-sub">Flashcards Reviewed</div>
+        <div id="flashcards-reviewed-metric" style="font-size: 1.25rem; font-weight: bold; color: #7c3aed;">0</div>
+        <div class="theme-text-sub" style="font-size: 0.75rem; color: #64748b;">Flashcards Reviewed</div>
       </div>
     </div>
 

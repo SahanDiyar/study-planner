@@ -10,7 +10,7 @@ if (lastActiveDate !== todayStr) {
   localStorage.setItem('study_last_active_date', todayStr);
 }
 
-// --- FLASHCARD STATE (NOT SAVED) ---
+// --- FLASHCARD STATE (SESSION ONLY, NO SUBJECTS) ---
 let flashcardDeck = [];
 let currentCardIndex = 0;
 let isShowingFront = true;
@@ -168,7 +168,6 @@ window.saveScheduleTable = function() {
   if (feedback) { feedback.innerText = "Saved successfully!"; setTimeout(() => { feedback.innerText = ""; }, 2000); }
 };
 
-// Hidden by default, toggles correctly with button text update
 window.toggleScheduleVisibility = function() {
   const wrapper = document.getElementById('schedule-content-wrapper');
   const btn = document.getElementById('toggle-schedule-btn');
@@ -183,25 +182,26 @@ window.toggleScheduleVisibility = function() {
   }
 };
 
-// Ensure schedule starts hidden on load
+// Start schedule hidden
 const scheduleWrapper = document.getElementById('schedule-content-wrapper');
 const scheduleBtn = document.getElementById('toggle-schedule-btn');
 if (scheduleWrapper) scheduleWrapper.style.display = 'none';
 if (scheduleBtn) scheduleBtn.innerText = 'View Schedule';
 
-// --- SIMPLE SENTENCE PARSER ---
+// --- CLEAN SENTENCE PARSER ---
 function extractQuizPairs(notes) {
   let sentences = notes.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 5);
   if (sentences.length === 0) sentences = [notes];
 
   let pairs = [];
   sentences.forEach((sentence, idx) => {
-    let words = sentence.split(' ');
+    let cleanSentence = sentence.replace(/[\r\n]+/g, ' ').trim();
+    let words = cleanSentence.split(' ');
     let term = words.slice(0, 3).join(' ');
     pairs.push({
       term: term || `Concept ${idx + 1}`,
-      definition: sentence,
-      fullSentence: sentence
+      definition: cleanSentence,
+      fullSentence: cleanSentence
     });
   });
   return pairs;
@@ -332,11 +332,11 @@ function renderQuizQuestion() {
       <h3 style="color: inherit; margin-top: 0; border-bottom: 2px solid ${isDark ? '#334155' : '#cbd5e1'}; padding-bottom: 8px;">Matching Assessment</h3>
       <p style="color: ${isDark ? '#94a3b8' : '#64748b'}; font-size: 0.9rem; margin-bottom: 15px;">Click a term on the left, then click its corresponding definition on the right:</p>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="matching-board">
-        <div style="display: flex; flex-direction: column; gap: 10px;" id="terms-column">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
           <h4 style="margin: 0; color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 0.95rem;">Terms</h4>
           ${shuffledTerms.map(t => `<div onclick="selectMatchingTerm(this, window.decodeURIComponent('${encodeURIComponent(t)}'))" data-term="${t}" class="match-term-card" style="padding: 10px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-weight: 500; color: inherit;">${t}</div>`).join('')}
         </div>
-        <div style="display: flex; flex-direction: column; gap: 10px;" id="defs-column">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
           <h4 style="margin: 0; color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 0.95rem;">Definitions</h4>
           ${shuffledDefs.map(d => `<div onclick="selectMatchingDef(this, window.decodeURIComponent('${encodeURIComponent(d)}'))" data-def="${d}" class="match-def-card" style="padding: 10px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: inherit;">${d}</div>`).join('')}
         </div>
@@ -431,7 +431,6 @@ window.handleMatchingSubmit = function() {
   const feedbackEl = document.getElementById('quiz-feedback');
   let correctCount = 0;
   const pairs = currentMatchingPairs;
-
   const correctMap = {};
   pairs.forEach(p => { correctMap[p.term] = p.definition.trim(); });
 
@@ -509,37 +508,13 @@ window.handleBlankSubmit = function() {
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 
 // --- FLASHCARD SYSTEM (SESSION ONLY, NO SUBJECTS) ---
-const modeAutoBtn = document.getElementById('mode-auto-btn');
-const modeManualBtn = document.getElementById('mode-manual-btn');
-const autoContainer = document.getElementById('flashcard-auto-container');
-const manualContainer = document.getElementById('flashcard-manual-container');
-
-if (modeAutoBtn && modeManualBtn) {
-  modeAutoBtn.addEventListener('click', () => {
-    autoContainer.style.display = 'block';
-    manualContainer.style.display = 'none';
-    modeAutoBtn.style.background = '#7c3aed';
-    modeAutoBtn.style.color = 'white';
-    modeManualBtn.style.background = currentTheme === 'dark' ? '#334155' : '#e2e8f0';
-    modeManualBtn.style.color = currentTheme === 'dark' ? '#f8fafc' : '#334155';
-  });
-  modeManualBtn.addEventListener('click', () => {
-    autoContainer.style.display = 'none';
-    manualContainer.style.display = 'block';
-    modeManualBtn.style.background = '#7c3aed';
-    modeManualBtn.style.color = 'white';
-    modeAutoBtn.style.background = currentTheme === 'dark' ? '#334155' : '#e2e8f0';
-    modeAutoBtn.style.color = currentTheme === 'dark' ? '#f8fafc' : '#334155';
-  });
-}
-
 function renderFlashcardPlayer() {
   const displayArea = document.getElementById('flashcard-display-area');
   if (!displayArea) return;
   const isDark = currentTheme === 'dark';
 
   if (flashcardDeck.length === 0) {
-    displayArea.innerHTML = `<p style='color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 15px;'>No flashcards available. Add some manually or generate them above!</p>`;
+    displayArea.innerHTML = `<p style='color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 15px;'>No flashcards available. Generate them above!</p>`;
     return;
   }
 
@@ -583,22 +558,6 @@ window.deleteCurrentCard = function(index) {
   renderFlashcardPlayer();
 };
 
-const addManualCardBtn = document.getElementById('add-manual-card-btn');
-if (addManualCardBtn) {
-  addManualCardBtn.addEventListener('click', () => {
-    const frontInput = document.getElementById('manual-front');
-    const backInput = document.getElementById('manual-back');
-    if (!frontInput || !backInput || !frontInput.value.trim() || !backInput.value.trim()) return;
-    
-    flashcardDeck.push({ front: frontInput.value.trim(), back: backInput.value.trim() });
-    
-    frontInput.value = ''; backInput.value = '';
-    currentCardIndex = flashcardDeck.length - 1;
-    isShowingFront = true;
-    renderFlashcardPlayer();
-  });
-}
-
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
   generateFlashcardsBtn.addEventListener('click', async () => {
@@ -631,7 +590,6 @@ if (generateFlashcardsBtn) {
       }
 
       flashcardDeck = flashcardDeck.concat(newCards);
-      
       currentCardIndex = flashcardDeck.length - newCards.length;
       isShowingFront = true;
       notesEl.value = '';
