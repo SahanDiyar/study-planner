@@ -22,7 +22,6 @@ let currentCorrectAnswer = "";
 
 // --- API KEY HELPER ---
 function getApiKey() {
-  // Your API key is embedded here for local use
   return "AQ.Ab8N6JKIW7udOfsK7_RT4iAgGYFGJvnDVNObuX4DFvhSO2w";
 }
 
@@ -189,14 +188,14 @@ const scheduleBtn = document.getElementById('toggle-schedule-btn');
 if (scheduleWrapper) scheduleWrapper.style.display = 'none';
 if (scheduleBtn) scheduleBtn.innerText = 'View Schedule';
 
-// --- GEMINI API CALL FUNCTION ---
+// --- GEMINI API CALL FUNCTION (Updated to gemini-2.5-flash) ---
 async function callGeminiAPI(promptText) {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error("API Key is required.");
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   
   const response = await fetch(url, {
     method: 'POST',
@@ -207,7 +206,8 @@ async function callGeminiAPI(promptText) {
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+    const errorBody = await response.text();
+    throw new Error(`API Error (${response.status}): ${errorBody || response.statusText}`);
   }
 
   const data = await response.json();
@@ -255,7 +255,7 @@ if (generateContentBtn) {
       renderQuizQuestion();
       recordActivity('quizzes', 1);
     } catch (error) {
-      displayArea.innerHTML = `<p style='color: #ef4444;'>Error generating quiz: ${error.message}. Please check your API key.</p>`;
+      displayArea.innerHTML = `<p style='color: #ef4444;'>Error generating quiz: ${error.message}</p>`;
     }
   });
 }
