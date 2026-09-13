@@ -22,7 +22,7 @@ let currentCorrectAnswer = "";
 
 // --- API KEY HELPER ---
 function getApiKey() {
-  return "AQ.Ab8RN6Jdtf6omjiuCV10qUkJ8SnZpalvcHUJ80jKLxO5GBK5Zw";
+  return "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";
 }
 
 // --- THEME / DARK MODE MANAGER ---
@@ -188,20 +188,22 @@ const scheduleBtn = document.getElementById('toggle-schedule-btn');
 if (scheduleWrapper) scheduleWrapper.style.display = 'none';
 if (scheduleBtn) scheduleBtn.innerText = 'View Schedule';
 
-// --- GEMINI API CALL FUNCTION (Updated to gemini-2.5-flash) ---
+// --- GROQ API CALL FUNCTION ---
 async function callGeminiAPI(promptText) {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error("API Key is required.");
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-  
-  const response = await fetch(url, {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: promptText }] }]
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: promptText }]
     })
   });
 
@@ -211,7 +213,7 @@ async function callGeminiAPI(promptText) {
   }
 
   const data = await response.json();
-  const textOutput = data.candidates[0].content.parts[0].text;
+  const textOutput = data.choices[0].message.content;
   
   let cleanJson = textOutput.replace(/```json/g, '').replace(/```/g, '').trim();
   return JSON.parse(cleanJson);
@@ -234,11 +236,11 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Gemini is analyzing your text and generating smart questions...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Groq is analyzing your text and generating smart questions...</p>";
 
     try {
       const prompt = `Based on the following text, generate exactly ${count} multiple-choice quiz questions. 
-      Return ONLY valid JSON in this exact array format:
+      Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
       [
         {
           "question": "Clear question text?",
@@ -368,11 +370,11 @@ if (generateFlashcardsBtn) {
     const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
     if (!notes) return;
 
-    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>🤖 Generating flashcards with Gemini...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>🤖 Generating flashcards with Groq...</p>";
 
     try {
       const prompt = `Based on the following text, generate exactly ${count} flashcards. 
-      Return ONLY valid JSON in this exact array format:
+      Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
       [
         {
           "front": "Key term or concept",
