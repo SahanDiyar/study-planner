@@ -34,7 +34,7 @@ function applyTheme(theme) {
   const cards = document.querySelectorAll('.theme-card');
   const texts = document.querySelectorAll('.theme-text');
   const textSubs = document.querySelectorAll('.theme-text-sub');
-  const inputs = document.querySelectorAll('.theme-input');
+  const inputs = document.querySelectorAll('input[type="text"], textarea, select');
   const tableHeaders = document.querySelectorAll('.theme-table-header');
 
   if (theme === 'dark') {
@@ -44,7 +44,14 @@ function applyTheme(theme) {
     cards.forEach(card => { card.style.background = '#1e293b'; card.style.border = '1px solid #334155'; });
     texts.forEach(t => t.style.color = '#f8fafc');
     textSubs.forEach(ts => ts.style.color = '#94a3b8');
-    inputs.forEach(inp => { inp.style.borderColor = '#475569'; inp.style.color = '#f8fafc'; });
+    
+    // Fix text boxes, inputs, and dropdowns for dark mode
+    inputs.forEach(inp => { 
+      inp.style.background = '#0f172a'; 
+      inp.style.borderColor = '#475569'; 
+      inp.style.color = '#f8fafc'; 
+    });
+    
     tableHeaders.forEach(th => { th.style.background = '#0f172a'; th.style.color = '#cbd5e1'; });
   } else {
     if (body) { body.style.background = '#f1f5f9'; body.style.color = '#1e293b'; }
@@ -53,7 +60,14 @@ function applyTheme(theme) {
     cards.forEach(card => { card.style.background = 'white'; card.style.border = 'none'; });
     texts.forEach(t => t.style.color = '#334155');
     textSubs.forEach(ts => ts.style.color = '#64748b');
-    inputs.forEach(inp => { inp.style.borderColor = '#cbd5e1'; inp.style.color = '#1e293b'; });
+    
+    // Reset text boxes, inputs, and dropdowns for light mode
+    inputs.forEach(inp => { 
+      inp.style.background = '#ffffff'; 
+      inp.style.borderColor = '#cbd5e1'; 
+      inp.style.color = '#1e293b'; 
+    });
+    
     tableHeaders.forEach(th => { th.style.background = '#f8fafc'; th.style.color = '#475569'; });
   }
 }
@@ -149,7 +163,7 @@ function renderScheduleTable() {
     html += `<tr><td style="padding: 8px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; background: ${isDark ? '#0f172a' : '#f8fafc'}; font-weight: bold; color: ${isDark ? '#cbd5e1' : '#475569'};">Period ${i + 1}</td>`;
     days.forEach(day => {
       const val = weeklyScheduleData[day]?.[i] || '';
-      html += `<td style="padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'};"><input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 4px; font-size: 0.85rem; text-align: center; background: ${isDark ? '#0f172a' : 'transparent'}; color: inherit;"></td>`;
+      html += `<td style="padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'};"><input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 4px; font-size: 0.85rem; text-align: center; background: ${isDark ? '#0f172a' : '#ffffff'}; color: ${isDark ? '#f8fafc' : '#1e293b'};"></td>`;
     });
     html += `</tr>`;
   }
