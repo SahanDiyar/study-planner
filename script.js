@@ -19,6 +19,7 @@ let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
 let currentCorrectAnswer = "";
+let currentQuizMode = "mcq"; // "mcq" or "blank"
 
 // --- API KEY HELPER ---
 function getApiKey() {
@@ -45,7 +46,6 @@ function applyTheme(theme) {
     texts.forEach(t => t.style.color = '#f8fafc');
     textSubs.forEach(ts => ts.style.color = '#94a3b8');
     
-    // Fix text boxes, inputs, and dropdowns for dark mode
     inputs.forEach(inp => { 
       inp.style.background = '#0f172a'; 
       inp.style.borderColor = '#475569'; 
@@ -61,7 +61,6 @@ function applyTheme(theme) {
     texts.forEach(t => t.style.color = '#334155');
     textSubs.forEach(ts => ts.style.color = '#64748b');
     
-    // Reset text boxes, inputs, and dropdowns for light mode
     inputs.forEach(inp => { 
       inp.style.background = '#ffffff'; 
       inp.style.borderColor = '#cbd5e1'; 
@@ -239,30 +238,47 @@ if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
     const notesEl = document.getElementById('notes-input');
     const countEl = document.getElementById('question-count');
+    const typeEl = document.getElementById('quiz-type') || document.querySelectorAll('select')[0];
     const displayArea = document.getElementById('content-display-area');
 
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
     const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
+    const quizType = typeEl ? typeEl.value : 'Multiple Choice (MCQ)';
 
     if (!notes) {
       displayArea.innerHTML = "<p style='color: #ef4444;'>Please enter some study notes first.</p>";
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Groq is analyzing your text and generating smart questions...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Groq is analyzing your text and generating your quiz...</p>";
 
     try {
-      const prompt = `Based on the following text, generate exactly ${count} multiple-choice quiz questions. 
-      Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
-      [
-        {
-          "question": "Clear question text?",
-          "options": ["Correct Answer", "Wrong Option 1", "Wrong Option 2", "Wrong Option 3"],
-          "answer": "Correct Answer"
-        }
-      ]
-      Text to analyze: ${notes}`;
+      let prompt = "";
+      if (quizType.includes("Blank") || quizType.toLowerCase().includes("fill")) {
+        currentQuizMode = "blank";
+        prompt = `Based on the following text, generate exactly ${count} fill-in-the-blank questions. Use underscores (e.g., "_____") for the missing word or phrase.
+        Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
+        [
+          {
+            "question": "Sentence with a blank, e.g., Silas worked as a _____ for forty years.",
+            "answer": "correct word"
+          }
+        ]
+        Text to analyze: ${notes}`;
+      } else {
+        currentQuizMode = "mcq";
+        prompt = `Based on the following text, generate exactly ${count} multiple-choice quiz questions. 
+        Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
+        [
+          {
+            "question": "Clear question text?",
+            "options": ["Correct Answer", "Wrong Option 1", "Wrong Option 2", "Wrong Option 3"],
+            "answer": "Correct Answer"
+          }
+        ]
+        Text to analyze: ${notes}`;
+      }
 
       const result = await callGeminiAPI(prompt);
       currentQuizQuestions = result;
@@ -298,16 +314,27 @@ function renderQuizQuestion() {
     <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px;">
       <div style="font-size: 0.85rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
       <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
-      <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
   `;
 
-  let shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+  if (currentQuizMode === "blank") {
+    // Render text input box for Fill in the Blank
+    html += `
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <input type="text" id="blank-user-answer" placeholder="Type your answer here..." style="padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; color: inherit; width: 100%; box-sizing: border-box;">
+        <button onclick="submitBlankAnswer()" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: fit-content;">Submit Answer</button>
+      </div>
+    `;
+  } else {
+    // Render MCQ option buttons
+    html += `<div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">`;
+    let shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+    shuffledOptions.forEach((opt) => {
+      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.95rem; color: inherit;">${opt}</button>`;
+    });
+    html += `</div>`;
+  }
 
-  shuffledOptions.forEach((opt, idx) => {
-    html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.95rem; color: inherit;">${opt}</button>`;
-  });
-
-  html += `</div><div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next →</button></div></div>`;
+  html += `<div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next →</button></div></div>`;
   displayArea.innerHTML = html;
 }
 
@@ -317,12 +344,33 @@ window.handleOptionClick = function(buttonElement, encodedChosen) {
   const feedbackEl = document.getElementById('quiz-feedback');
   const nextBtn = document.getElementById('next-q-btn');
 
-  if (chosen.trim() === currentCorrectAnswer.trim()) {
+  if (chosen.trim().toLowerCase() === currentCorrectAnswer.trim().toLowerCase()) {
     buttonElement.style.background = "#065f46"; buttonElement.style.borderColor = "#10b981";
     feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!";
     userScore++;
   } else {
     buttonElement.style.background = "#991b1b"; buttonElement.style.borderColor = "#ef4444";
+    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
+  }
+  if (nextBtn) nextBtn.style.display = 'inline-block';
+};
+
+window.submitBlankAnswer = function() {
+  const inputEl = document.getElementById('blank-user-answer');
+  if (!inputEl) return;
+  const userAns = inputEl.value.trim().toLowerCase();
+  const correctAns = currentCorrectAnswer.trim().toLowerCase();
+  const feedbackEl = document.getElementById('quiz-feedback');
+  const nextBtn = document.getElementById('next-q-btn');
+
+  inputEl.disabled = true;
+
+  if (userAns === correctAns) {
+    inputEl.style.background = "#065f46"; inputEl.style.borderColor = "#10b981";
+    feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!";
+    userScore++;
+  } else {
+    inputEl.style.background = "#991b1b"; inputEl.style.borderColor = "#ef4444";
     feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
