@@ -19,7 +19,7 @@ let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
 let currentCorrectAnswer = "";
-let currentQuizMode = "mcq"; // "mcq" or "blank"
+let currentQuizMode = "mcq"; // "mcq", "blank", "matching", "worksheet"
 
 // --- API KEY HELPER ---
 function getApiKey() {
@@ -251,11 +251,13 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Groq is analyzing your text and generating your quiz...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Groq is analyzing your text and generating your activity...</p>";
 
     try {
       let prompt = "";
-      if (quizType.includes("Blank") || quizType.toLowerCase().includes("fill")) {
+      const lowerType = quizType.toLowerCase();
+
+      if (lowerType.includes("blank") || lowerType.includes("fill")) {
         currentQuizMode = "blank";
         prompt = `Based on the following text, generate exactly ${count} fill-in-the-blank questions. Use underscores (e.g., "_____") for the missing word or phrase.
         Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
@@ -263,6 +265,29 @@ if (generateContentBtn) {
           {
             "question": "Sentence with a blank, e.g., Silas worked as a _____ for forty years.",
             "answer": "correct word"
+          }
+        ]
+        Text to analyze: ${notes}`;
+      } else if (lowerType.includes("match")) {
+        currentQuizMode = "matching";
+        prompt = `Based on the following text, generate exactly ${count} matching items pairing a key term with its correct definition/description. Also provide 3 incorrect/distractor definitions for each term.
+        Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
+        [
+          {
+            "term": "Key term or concept",
+            "answer": "Correct definition",
+            "options": ["Correct definition", "Wrong definition 1", "Wrong definition 2", "Wrong definition 3"]
+          }
+        ]
+        Text to analyze: ${notes}`;
+      } else if (lowerType.includes("worksheet") || lowerType.includes("study")) {
+        currentQuizMode = "worksheet";
+        prompt = `Based on the following text, generate exactly ${count} open-ended study worksheet questions requiring short answers or explanations.
+        Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
+        [
+          {
+            "question": "Open-ended study question?",
+            "answer": "Detailed model answer / explanation"
           }
         ]
         Text to analyze: ${notes}`;
@@ -287,7 +312,7 @@ if (generateContentBtn) {
       renderQuizQuestion();
       recordActivity('quizzes', 1);
     } catch (error) {
-      displayArea.innerHTML = `<p style='color: #ef4444;'>Error generating quiz: ${error.message}</p>`;
+      displayArea.innerHTML = `<p style='color: #ef4444;'>Error generating activity: ${error.message}</p>`;
     }
   });
 }
@@ -300,7 +325,7 @@ function renderQuizQuestion() {
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `
       <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'};">
-        <h3 style="color: #2563eb; margin-top: 0;">Quiz Completed! 🎉 Final Score: ${userScore}/${currentQuizQuestions.length}</h3>
+        <h3 style="color: #2563eb; margin-top: 0;">Activity Completed! 🎉 Final Score: ${userScore}/${currentQuizQuestions.length}</h3>
         <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Start Over</button>
       </div>
     `;
@@ -313,20 +338,44 @@ function renderQuizQuestion() {
   let html = `
     <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px;">
       <div style="font-size: 0.85rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
-      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
   `;
 
-  if (currentQuizMode === "blank") {
-    // Render text input box for Fill in the Blank
+  if (currentQuizMode === "matching") {
     html += `
+      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 8px;">Match the correct definition for:</div>
+      <div style="font-size: 1.25rem; color: #3b82f6; font-weight: bold; margin-bottom: 20px;">"${q.term}"</div>
+      <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
+    `;
+    let shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+    shuffledOptions.forEach((opt) => {
+      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.95rem; color: inherit;">${opt}</button>`;
+    });
+    html += `</div>`;
+  } else if (currentQuizMode === "blank") {
+    html += `
+      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <input type="text" id="blank-user-answer" placeholder="Type your answer here..." style="padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; color: inherit; width: 100%; box-sizing: border-box;">
         <button onclick="submitBlankAnswer()" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: fit-content;">Submit Answer</button>
       </div>
     `;
+  } else if (currentQuizMode === "worksheet") {
+    html += `
+      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <textarea id="worksheet-user-answer" rows="3" placeholder="Write your notes or explanation here..." style="padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; color: inherit; width: 100%; box-sizing: border-box;"></textarea>
+        <button onclick="revealWorksheetAnswer()" id="reveal-btn" style="background: #3b82f6; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: fit-content;">Show Model Answer</button>
+        <div id="model-answer-box" style="display: none; margin-top: 10px; padding: 12px; background: ${isDark ? '#334155' : '#f1f5f9'}; border-radius: 6px; font-size: 0.95rem; color: inherit;">
+          <strong>Model Answer:</strong> ${q.answer}
+        </div>
+      </div>
+    `;
   } else {
-    // Render MCQ option buttons
-    html += `<div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">`;
+    // MCQ
+    html += `
+      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+      <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
+    `;
     let shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
     shuffledOptions.forEach((opt) => {
       html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.95rem; color: inherit;">${opt}</button>`;
@@ -374,6 +423,16 @@ window.submitBlankAnswer = function() {
     feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
+};
+
+window.revealWorksheetAnswer = function() {
+  const box = document.getElementById('model-answer-box');
+  const revealBtn = document.getElementById('reveal-btn');
+  const nextBtn = document.getElementById('next-q-btn');
+  if (box) box.style.display = 'block';
+  if (revealBtn) revealBtn.style.display = 'none';
+  if (nextBtn) nextBtn.style.display = 'inline-block';
+  userScore++; // Give credit for completing the study worksheet card
 };
 
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
