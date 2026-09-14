@@ -220,7 +220,7 @@ if (generateContentBtn) {
         prompt = `Based on the text, generate exactly ${count} fill-in-the-blank questions using underscores "_____". Return ONLY a valid JSON array: [{"question": "Sentence with _____ blank.", "answer": "word"}] Text: ${notes}`;
       } else if (lowerType.includes("match")) {
         currentQuizMode = "matching";
-        prompt = `Based on the text, generate exactly ${count} matching pairs. Return ONLY a valid JSON array: [{"question": "Term: key", "answer": "Definition"}] Text: ${notes}`;
+        prompt = `Based on the text, generate exactly ${count} matching items. Return ONLY a valid JSON array where each object has a 'term' and an 'answer' field: [{"term": "Key term or concept", "answer": "Corresponding definition"}] Text: ${notes}`;
       } else if (lowerType.includes("worksheet") || lowerType.includes("study")) {
         currentQuizMode = "worksheet";
         prompt = `Based on the text, generate exactly ${count} open-ended questions. Return ONLY a valid JSON array: [{"question": "Question?", "answer": "Model answer"}] Text: ${notes}`;
@@ -230,7 +230,21 @@ if (generateContentBtn) {
       }
 
       const result = await callGroqAPI(prompt);
-      currentQuizQuestions = result;
+      
+      // If matching mode, structure it properly with terms and randomized answers
+      if (currentQuizMode === "matching") {
+        currentQuizQuestions = result.map((item, index, arr) => {
+          const shuffledAnswers = [...arr].map(x => x.answer).sort(() => Math.random() - 0.5);
+          return {
+            term: item.term || item.question,
+            answer: item.answer,
+            options: shuffledAnswers
+          };
+        });
+      } else {
+        currentQuizQuestions = result;
+      }
+
       currentQuizIndex = 0;
       userScore = 0;
       renderQuizQuestion();
@@ -256,21 +270,39 @@ function renderQuizQuestion() {
   }
 
   const q = currentQuizQuestions[currentQuizIndex];
-  currentCorrectAnswer = q.answer;
-
+  
   let html = `
     <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px;">
       <div style="font-size: 0.85rem; color: var(--text-sub); font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
-      <div style="font-size: 1.1font; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
   `;
 
-  if (currentQuizMode === "blank" || currentQuizMode === "matching") {
+  if (currentQuizMode === "matching") {
+    currentCorrectAnswer = q.answer;
     html += `
+      <div style="font-size: 1rem; font-weight: 500; margin-bottom: 15px;">Match the term on the left with its correct definition on the right:</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start;">
+        <div style="background: rgba(37, 99, 235, 0.05); padding: 15px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <div style="font-size: 0.8rem; color: var(--text-sub); font-weight: bold; margin-bottom: 5px;">TERM</div>
+          <div style="font-size: 1rem; font-weight: 600;" id="matching-term-text">${q.term}</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;" id="options-container">
+          <div style="font-size: 0.8rem; color: var(--text-sub); font-weight: bold;">SELECT MATCHING DEFINITION:</div>
+    `;
+    q.options.forEach((opt) => {
+      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 8px 12px; font-size: 0.9rem;">${opt}</button>`;
+    });
+    html += `</div></div>`;
+  } else if (currentQuizMode === "blank") {
+    currentCorrectAnswer = q.answer;
+    html += `
+      <div style="font-size: 1.1rem; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <input type="text" id="blank-user-answer" placeholder="Type your answer...">
       <button onclick="submitBlankAnswer()">Submit Answer</button>
     `;
   } else if (currentQuizMode === "worksheet") {
+    currentCorrectAnswer = q.answer;
     html += `
+      <div style="font-size: 1.1rem; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <textarea id="worksheet-user-answer" rows="3" placeholder="Write your thoughts..."></textarea>
       <button id="reveal-btn" onclick="revealWorksheetAnswer()">Show Model Answer</button>
       <div id="model-answer-box" style="display: none; margin-top: 10px; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 6px;">
@@ -278,7 +310,11 @@ function renderQuizQuestion() {
       </div>
     `;
   } else {
-    html += `<div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">`;
+    currentCorrectAnswer = q.answer;
+    html += `
+      <div style="font-size: 1.1rem; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
+      <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
+    `;
     let shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
     shuffledOptions.forEach((opt) => {
       html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color);">${opt}</button>`;
