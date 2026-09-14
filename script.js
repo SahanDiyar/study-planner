@@ -8,10 +8,10 @@ let userScore = 0;
 let currentCorrectAnswer = "";
 let shuffledDefinitionsPool = [];
 
-// Groq API Configuration (OpenAI compatible endpoint)
+// Your exact Groq API Configuration from yesterday
 const GROQ_API_KEY = "gsk_uTd0JVVKzLALxGouSwaSWGdyb3F6ydzXeYT0mpDFAhRufiQ5QIn"; 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "openai/gpt-oss-120b"; // As configured in your setup
+const GROQ_MODEL = "openai/gpt-oss-120b"; 
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
@@ -158,7 +158,7 @@ function generateFlashcards() {
   if (notesInput) notesInput.value = '';
 }
 
-// --- GROQ API INTEGRATION (OpenAI Format) ---
+// --- GROQ API INTEGRATION ---
 async function callGroqAPI(promptText) {
   const response = await fetch(GROQ_ENDPOINT, {
     method: 'POST',
@@ -263,7 +263,6 @@ if (generateBtn) {
 function renderQuizQuestion() {
   const displayArea = document.getElementById('content-display-area');
   if (!displayArea) return;
-  const isDark = currentTheme === 'dark';
 
   if (currentQuizMode === "matching") {
     let html = `
@@ -313,7 +312,6 @@ function renderQuizQuestion() {
     return;
   }
 
-  // Standard MCQ / Blank Question Renderer fallback
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `<div style="text-align: center; padding: 20px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px;"><strong>Activity Completed! 🎉 Final Score: ${userScore} / ${currentQuizQuestions.length}</strong><br><br><button onclick="location.reload()" style="padding: 6px 14px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">Start Over</button></div>`;
     return;
