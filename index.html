@@ -9,27 +9,26 @@
       --bg-color: #f1f5f9;
       --card-bg: #ffffff;
       --text-color: #1e293b;
+      --text-sub: #64748b;
       --border-color: #cbd5e1;
-      --primary: #8b5cf6;
-      --primary-hover: #7c3aed;
+      --primary: #2563eb;
     }
-
     body.dark {
       --bg-color: #0f172a;
       --card-bg: #1e293b;
       --text-color: #f8fafc;
+      --text-sub: #94a3b8;
       --border-color: #334155;
+      --primary: #3b82f6;
     }
-
     body {
+      font-family: system-ui, -apple-system, sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
-      font-family: system-ui, -apple-system, sans-serif;
       margin: 0;
       padding: 20px;
-      transition: background 0.3s, color 0.3s;
+      transition: background 0.2s, color 0.2s;
     }
-
     .container {
       max-width: 800px;
       margin: 0 auto;
@@ -37,174 +36,141 @@
       flex-direction: column;
       gap: 20px;
     }
-
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
+      border-radius: 8px;
       padding: 20px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-
-    .header-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    h2, h3 { margin-top: 0; color: var(--primary); }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text-color);
+      box-sizing: border-box;
     }
-
-    h1 {
-      margin: 0 0 5px 0;
-      font-size: 1.5rem;
-    }
-
-    p.subtitle {
-      margin: 0;
-      font-size: 0.9rem;
-      opacity: 0.7;
-    }
-
     button {
       background: var(--primary);
       color: white;
       border: none;
       padding: 10px 16px;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
-      transition: background 0.2s;
     }
-
-    button:hover {
-      background: var(--primary-hover);
-    }
-
-    input, select, textarea {
-      background: var(--card-bg);
-      color: var(--text-color);
-      border: 1px solid var(--border-color);
-      padding: 10px;
-      border-radius: 8px;
-      font-family: inherit;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .task-row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-top: 10px;
-      margin-bottom: 10px;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 15px 0 0 0;
-    }
-
-    li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 12px;
-      background: rgba(139, 92, 246, 0.05);
-      border-radius: 6px;
-      margin-bottom: 8px;
-    }
-
-    .stats-footer {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      text-align: center;
-      font-size: 1.2rem;
-      font-weight: bold;
-    }
+    button:hover { opacity: 0.9; }
+    .flex-row { display: flex; gap: 10px; align-items: center; }
+    .schedule-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+    .schedule-table th, .schedule-table td { border: 1px solid var(--border-color); padding: 8px; text-align: center; }
+    .schedule-table th { background: rgba(37, 99, 235, 0.1); }
   </style>
 </head>
-<body class="light">
+<body id="body-layout">
+
   <div class="container">
     
-    <!-- Header -->
-    <div class="card header-card">
+    <!-- Top Bar / Header -->
+    <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h1>AI Study Hub 🚀</h1>
-        <p class="subtitle">Manage tasks, track your schedule, and generate custom practice quizzes & flashcards.</p>
+        <h2>AI Study Hub 🚀</h2>
+        <p style="color: var(--text-sub); margin: 0; font-size: 0.9rem;">Manage tasks, track schedule, and generate custom practice exercises.</p>
       </div>
-      <button id="theme-toggle-btn" onclick="toggleTheme()">🌙 Dark Mode</button>
+      <button id="theme-toggle-btn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
     </div>
 
     <!-- Task Manager -->
     <div class="card">
       <h3>Task Manager</h3>
-      <div class="task-row">
-        <input type="text" id="new-task-input" placeholder="Add a new task...">
-        <button onclick="addTask()">Add Task</button>
+      <div class="flex-row">
+        <input type="text" id="task-input" placeholder="Add a new study task..." style="margin-bottom:0;">
+        <button id="add-task-btn" style="white-space: nowrap;">Add Task</button>
       </div>
-      <ul id="tasks-list"></ul>
+      <ul id="task-list" style="list-style: none; padding: 0; margin-top: 15px;"></ul>
     </div>
 
     <!-- Weekly Schedule -->
-    <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <h3 style="margin: 0 0 5px 0;">Weekly Schedule</h3>
-        <p class="subtitle" style="margin: 0;">View your planned study schedule and classes.</p>
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>Weekly Schedule</h3>
+        <button id="toggle-schedule-btn" onclick="toggleScheduleVisibility()">View Schedule</button>
       </div>
-      <button onclick="alert('Weekly schedule view opened!')">View Schedule</button>
+      <div id="schedule-content-wrapper" style="display: none; margin-top: 15px;">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Sunday</th>
+              <th>Monday</th>
+              <th>Tuesday</th>
+              <th>Wednesday</th>
+              <th>Thursday</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-table-body"></tbody>
+        </table>
+        <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <button onclick="saveScheduleTable()" style="background: #10b981;">Save Schedule</button>
+          <span id="schedule-save-feedback" style="font-size: 0.85rem; color: #10b981; font-weight: bold;"></span>
+        </div>
+      </div>
     </div>
 
-    <!-- AI Study Hub (NotebookLM Style) -->
+    <!-- AI Quiz & Activity Generator -->
     <div class="card">
       <h3>AI Study Hub (NotebookLM Style)</h3>
-      <p class="subtitle" style="margin-bottom: 15px;">Paste your study notes or paragraph below to generate custom practice questions:</p>
+      <label style="font-size: 0.9rem; font-weight: 500;">Paste your study notes or paragraph below:</label>
+      <textarea id="notes-input" rows="5" placeholder="Paste text here..."></textarea>
       
-      <textarea id="notes-input" rows="4" placeholder="Paste study notes here..."></textarea>
-      
-      <div class="grid-2">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
         <div>
-          <label style="font-size: 0.85rem; display: block; margin-bottom: 5px;">Quiz Type:</label>
+          <label style="font-size: 0.85rem; font-weight: 500;">Quiz Type:</label>
           <select id="quiz-type">
-            <option value="Matching">Matching Pairs</option>
             <option value="Multiple Choice (MCQ)">Multiple Choice (MCQ)</option>
-            <option value="Fill in the Blank">Fill in the Blank</option>
+            <option value="Fill in the blanks">Fill in the blanks</option>
+            <option value="Matching Pairs">Matching Pairs</option>
+            <option value="Study Worksheet">Study Worksheet</option>
           </select>
         </div>
         <div>
-          <label style="font-size: 0.85rem; display: block; margin-bottom: 5px;">Number of Questions:</label>
-          <input type="number" id="question-count" value="10" min="1" max="20">
+          <label style="font-size: 0.85rem; font-weight: 500;">Number of Questions:</label>
+          <input type="number" id="question-count" value="5" min="1" max="20">
         </div>
       </div>
 
-      <button id="generate-content-btn" style="margin-top: 10px;">Generate Quiz</button>
+      <button id="generate-content-btn" style="margin-top: 5px;">Generate Quiz</button>
       
-      <!-- Dynamic Activity Render Area -->
-      <div id="content-display-area" style="margin-top: 15px;"></div>
+      <div id="content-display-area" style="margin-top: 20px;"></div>
     </div>
 
     <!-- Flashcard Studio -->
     <div class="card">
       <h3>Flashcard Studio</h3>
-      <p class="subtitle" style="margin-bottom: 15px;">Generate flashcards from your text to review during your session:</p>
-      <label style="font-size: 0.85rem; display: block; margin-bottom: 5px;">Number of Flashcards:</label>
-      <input type="number" id="flashcard-count" value="10" style="margin-bottom: 10px;">
-      <textarea id="flashcard-notes-input" rows="3" placeholder="Paste text for flashcards..." style="margin-bottom: 10px;"></textarea>
-      <button onclick="generateFlashcards()">Generate Flashcards</button>
+      <label style="font-size: 0.85rem; font-weight: 500;">Number of Flashcards:</label>
+      <input type="number" id="flashcard-count" value="5" min="1" max="20">
+      
+      <label style="font-size: 0.85rem; font-weight: 500;">Paste text for flashcards:</label>
+      <textarea id="flashcard-notes" rows="3" placeholder="Paste notes to generate flashcards..."></textarea>
+      
+      <button id="generate-flashcards-btn">Generate Flashcards</button>
+      
+      <div id="flashcard-display-area" style="margin-top: 15px;"></div>
     </div>
 
-    <!-- Stats Footer -->
-    <div class="card stats-footer">
+    <!-- Analytics Dashboard / Footer -->
+    <div class="card" style="display: flex; justify-content: space-around; text-align: center;">
       <div>
-        <div id="completed-tasks-count" style="color: var(--primary);">0</div>
-        <div style="font-size: 0.8rem; opacity: 0.7; font-weight: normal;">Completed Tasks</div>
+        <div id="completed-tasks-metric" style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">0</div>
+        <div style="font-size: 0.85rem; color: var(--text-sub);">Completed Tasks</div>
       </div>
       <div>
-        <div id="flashcards-reviewed-count" style="color: var(--primary);">0</div>
-        <div style="font-size: 0.8rem; opacity: 0.7; font-weight: normal;">Flashcards Reviewed</div>
+        <div id="flashcards-reviewed-metric" style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">0</div>
+        <div style="font-size: 0.85rem; color: var(--text-sub);">Flashcards Reviewed</div>
       </div>
     </div>
 

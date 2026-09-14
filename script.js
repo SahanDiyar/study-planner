@@ -1,6 +1,134 @@
-days.forEach(day => {
+// --- INITIALIZE DATA & DAILY RESET ---
+let tasks = JSON.parse(localStorage.getItem('study_tasks')) || [];
+let activityLog = JSON.parse(localStorage.getItem('study_activity_log')) || [];
+
+const todayStr = new Date().toDateString();
+const lastActiveDate = localStorage.getItem('study_last_active_date');
+
+if (lastActiveDate !== todayStr) {
+  activityLog = [];
+  localStorage.setItem('study_activity_log', JSON.stringify(activityLog));
+  localStorage.setItem('study_last_active_date', todayStr);
+}
+
+// --- APP STATES ---
+let flashcardDeck = [];
+let currentCardIndex = 0;
+let isShowingFront = true;
+
+let currentQuizQuestions = [];
+let currentQuizIndex = 0;
+let userScore = 0;
+let currentCorrectAnswer = "";
+let currentQuizMode = "mcq";
+
+// --- API CONFIGURATION ---
+function getApiKey() {
+  return "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";
+}
+
+// --- THEME MANAGER ---
+let currentTheme = localStorage.getItem('study_hub_theme') || 'light';
+
+function applyTheme(theme) {
+  const body = document.getElementById('body-layout');
+  const toggleBtn = document.getElementById('theme-toggle-btn');
+  if (theme === 'dark') {
+    if (body) body.classList.add('dark');
+    if (toggleBtn) toggleBtn.innerText = '☀️ Light Mode';
+  } else {
+    if (body) body.classList.remove('dark');
+    if (toggleBtn) toggleBtn.innerText = '🌙 Dark Mode';
+  }
+}
+
+window.toggleDarkMode = function() {
+  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+  localStorage.setItem('study_hub_theme', currentTheme);
+  applyTheme(currentTheme);
+};
+
+// --- TASK MANAGER ---
+const addTaskBtn = document.getElementById('add-task-btn');
+const taskInput = document.getElementById('task-input');
+const taskList = document.getElementById('task-list');
+
+function renderTasks() {
+  if (!taskList) return;
+  taskList.innerHTML = '';
+  tasks.forEach((task, index) => {
+    const li = document.createElement('li');
+    li.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);";
+    li.innerHTML = `
+      <span style="${task.completed ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${task.text}</span>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${index})" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+        <button onclick="deleteTask(${index})" style="background: #ef4444; padding: 4px 8px; font-size: 0.8rem;">Delete</button>
+      </div>
+    `;
+    taskList.appendChild(li);
+  });
+  updateAnalyticsDisplay();
+}
+
+window.toggleTask = function(index) {
+  tasks[index].completed = !tasks[index].completed;
+  if (tasks[index].completed) recordActivity('tasks', 1);
+  localStorage.setItem('study_tasks', JSON.stringify(tasks));
+  renderTasks();
+};
+
+window.deleteTask = function(index) {
+  tasks.splice(index, 1);
+  localStorage.setItem('study_tasks', JSON.stringify(tasks));
+  renderTasks();
+};
+
+if (addTaskBtn && taskInput) {
+  addTaskBtn.addEventListener('click', () => {
+    const text = taskInput.value.trim();
+    if (text) {
+      tasks.push({ text, completed: false });
+      taskInput.value = '';
+      localStorage.setItem('study_tasks', JSON.stringify(tasks));
+      renderTasks();
+    }
+  });
+}
+
+// --- ACTIVITY & ANALYTICS ---
+function recordActivity(type, amount) {
+  activityLog.push({ type, amount, date: new Date().toISOString() });
+  localStorage.setItem('study_activity_log', JSON.stringify(activityLog));
+  updateAnalyticsDisplay();
+}
+
+function updateAnalyticsDisplay() {
+  const completedTasksCount = tasks.filter(t => t.completed).length;
+  const totalFlashcards = activityLog.filter(a => a.type === 'flashcards').reduce((sum, a) => sum + a.amount, 0);
+  
+  const completedEl = document.getElementById('completed-tasks-metric');
+  const flashcardsEl = document.getElementById('flashcards-reviewed-metric');
+  
+  if (completedEl) completedEl.innerText = completedTasksCount;
+  if (flashcardsEl) flashcardsEl.innerText = totalFlashcards;
+}
+
+// --- WEEKLY SCHEDULE ---
+let weeklyScheduleData = JSON.parse(localStorage.getItem('study_weekly_schedule_grid')) || {
+  Sunday: Array(7).fill(''), Monday: Array(7).fill(''), Tuesday: Array(7).fill(''), Wednesday: Array(7).fill(''), Thursday: Array(7).fill('')
+};
+
+function renderScheduleTable() {
+  const tbody = document.getElementById('schedule-table-body');
+  if (!tbody) return;
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    html += `<tr><td style="font-weight: bold;">Period ${i + 1}</td>`;
+    days.forEach(day => {
       const val = weeklyScheduleData[day]?.[i] || '';
-      html += `<td style="padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'};"><input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 4px; font-size: 0.85rem; text-align: center; background: ${isDark ? '#0f172a' : '#ffffff'}; color: ${isDark ? '#f8fafc' : '#1e293b'};"></td>`;
+      html += `<td><input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Sub ${i+1}" style="margin:0; border:none; text-align:center; background:transparent;"></td>`;
     });
     html += `</tr>`;
   }
@@ -17,7 +145,7 @@ window.saveScheduleTable = function() {
   });
   localStorage.setItem('study_weekly_schedule_grid', JSON.stringify(weeklyScheduleData));
   const feedback = document.getElementById('schedule-save-feedback');
-  if (feedback) { feedback.innerText = "Saved successfully!"; setTimeout(() => { feedback.innerText = ""; }, 2000); }
+  if (feedback) { feedback.innerText = "Saved!"; setTimeout(() => { feedback.innerText = ""; }, 2000); }
 };
 
 window.toggleScheduleVisibility = function() {
@@ -34,17 +162,10 @@ window.toggleScheduleVisibility = function() {
   }
 };
 
-const scheduleWrapper = document.getElementById('schedule-content-wrapper');
-const scheduleBtn = document.getElementById('toggle-schedule-btn');
-if (scheduleWrapper) scheduleWrapper.style.display = 'none';
-if (scheduleBtn) scheduleBtn.innerText = 'View Schedule';
-
-// --- GROQ API CALL FUNCTION ---
-async function callGeminiAPI(promptText) {
+// --- API CALL HELPER ---
+async function callGroqAPI(promptText) {
   const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error("API Key is required.");
-  }
+  if (!apiKey) throw new Error("API Key is required.");
 
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: 'POST',
@@ -65,7 +186,6 @@ async function callGeminiAPI(promptText) {
 
   const data = await response.json();
   const textOutput = data.choices[0].message.content;
-  
   let cleanJson = textOutput.replace(/```json/g, '').replace(/```/g, '').trim();
   return JSON.parse(cleanJson);
 }
@@ -76,12 +196,12 @@ if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
     const notesEl = document.getElementById('notes-input');
     const countEl = document.getElementById('question-count');
-    const typeEl = document.getElementById('quiz-type') || document.querySelectorAll('select')[0];
+    const typeEl = document.getElementById('quiz-type');
     const displayArea = document.getElementById('content-display-area');
 
     if (!notesEl || !displayArea) return;
     const notes = notesEl.value.trim();
-    const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
+    const count = parseInt(countEl ? countEl.value : '5', 10) || 5;
     const quizType = typeEl ? typeEl.value : 'Multiple Choice (MCQ)';
 
     if (!notes) {
@@ -89,7 +209,7 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Groq is analyzing your text and generating your activity...</p>";
+    displayArea.innerHTML = "<p style='color: var(--text-sub);'>🤖 Groq is generating your activity...</p>";
 
     try {
       let prompt = "";
@@ -97,52 +217,19 @@ if (generateContentBtn) {
 
       if (lowerType.includes("blank") || lowerType.includes("fill")) {
         currentQuizMode = "blank";
-        prompt = `Based on the following text, generate exactly ${count} fill-in-the-blank questions. Use underscores (e.g., "_____") for the missing word or phrase.
-        Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
-        [
-          {
-            "question": "Sentence with a blank, e.g., Silas worked as a _____ for forty years.",
-            "answer": "correct word"
-          }
-        ]
-        Text to analyze: ${notes}`;
+        prompt = `Based on the text, generate exactly ${count} fill-in-the-blank questions using underscores "_____". Return ONLY a valid JSON array: [{"question": "Sentence with _____ blank.", "answer": "word"}] Text: ${notes}`;
       } else if (lowerType.includes("match")) {
         currentQuizMode = "matching";
-        prompt = `Based on the following text, generate exactly ${count} matching pairs pairing a key term with its correct definition.
-        Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
-        [
-          {
-            "question": "Match the term: Key term or concept",
-            "answer": "Correct definition or explanation"
-          }
-        ]
-        Text to analyze: ${notes}`;
+        prompt = `Based on the text, generate exactly ${count} matching pairs. Return ONLY a valid JSON array: [{"question": "Term: key", "answer": "Definition"}] Text: ${notes}`;
       } else if (lowerType.includes("worksheet") || lowerType.includes("study")) {
         currentQuizMode = "worksheet";
-        prompt = `Based on the following text, generate exactly ${count} open-ended study worksheet questions requiring short answers or explanations.
-        Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
-        [
-          {
-            "question": "Open-ended study question?",
-            "answer": "Detailed model answer / explanation"
-          }
-        ]
-        Text to analyze: ${notes}`;
+        prompt = `Based on the text, generate exactly ${count} open-ended questions. Return ONLY a valid JSON array: [{"question": "Question?", "answer": "Model answer"}] Text: ${notes}`;
       } else {
         currentQuizMode = "mcq";
-        prompt = `Based on the following text, generate exactly ${count} multiple-choice quiz questions. 
-        Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
-        [
-          {
-            "question": "Clear question text?",
-            "options": ["Correct Answer", "Wrong Option 1", "Wrong Option 2", "Wrong Option 3"],
-            "answer": "Correct Answer"
-          }
-        ]
-        Text to analyze: ${notes}`;
+        prompt = `Based on the text, generate exactly ${count} multiple-choice questions. Return ONLY a valid JSON array: [{"question": "Question?", "options": ["Correct", "Wrong1", "Wrong2", "Wrong3"], "answer": "Correct"}] Text: ${notes}`;
       }
 
-      const result = await callGeminiAPI(prompt);
+      const result = await callGroqAPI(prompt);
       currentQuizQuestions = result;
       currentQuizIndex = 0;
       userScore = 0;
@@ -157,13 +244,12 @@ if (generateContentBtn) {
 function renderQuizQuestion() {
   const displayArea = document.getElementById('content-display-area');
   if (!displayArea) return;
-  const isDark = currentTheme === 'dark';
 
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `
-      <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; padding: 25px; border-radius: 8px; text-align: center; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'};">
-        <h3 style="color: #2563eb; margin-top: 0;">Activity Completed! 🎉 Final Score: ${userScore}/${currentQuizQuestions.length}</h3>
-        <button onclick="location.reload()" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">Start Over</button>
+      <div style="background: var(--card-bg); padding: 25px; border-radius: 8px; text-align: center; border: 1px solid var(--border-color);">
+        <h3 style="color: var(--primary); margin-top: 0;">Activity Completed! 🎉 Score: ${userScore}/${currentQuizQuestions.length}</h3>
+        <button onclick="location.reload()" style="margin-top: 10px;">Start Over</button>
       </div>
     `;
     return;
@@ -173,50 +259,34 @@ function renderQuizQuestion() {
   currentCorrectAnswer = q.answer;
 
   let html = `
-    <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px;">
-      <div style="font-size: 0.85rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px;">
+      <div style="font-size: 0.85rem; color: var(--text-sub); font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1} of ${currentQuizQuestions.length}</div>
+      <div style="font-size: 1.1font; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
   `;
 
-  if (currentQuizMode === "blank") {
+  if (currentQuizMode === "blank" || currentQuizMode === "matching") {
     html += `
-      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <input type="text" id="blank-user-answer" placeholder="Type your answer here..." style="padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; color: inherit; width: 100%; box-sizing: border-box;">
-        <button onclick="submitBlankAnswer()" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: fit-content;">Submit Answer</button>
-      </div>
-    `;
-  } else if (currentQuizMode === "matching") {
-    html += `
-      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <input type="text" id="blank-user-answer" placeholder="Type the matching definition..." style="padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; color: inherit; width: 100%; box-sizing: border-box;">
-        <button onclick="submitBlankAnswer()" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: fit-content;">Submit Answer</button>
-      </div>
+      <input type="text" id="blank-user-answer" placeholder="Type your answer...">
+      <button onclick="submitBlankAnswer()">Submit Answer</button>
     `;
   } else if (currentQuizMode === "worksheet") {
     html += `
-      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <textarea id="worksheet-user-answer" rows="3" placeholder="Write your notes or explanation here..." style="padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; color: inherit; width: 100%; box-sizing: border-box;"></textarea>
-        <button onclick="revealWorksheetAnswer()" id="reveal-btn" style="background: #3b82f6; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: fit-content;">Show Model Answer</button>
-        <div id="model-answer-box" style="display: none; margin-top: 10px; padding: 12px; background: ${isDark ? '#334155' : '#f1f5f9'}; border-radius: 6px; font-size: 0.95rem; color: inherit;">
-          <strong>Model Answer:</strong> ${q.answer}
-        </div>
+      <textarea id="worksheet-user-answer" rows="3" placeholder="Write your thoughts..."></textarea>
+      <button id="reveal-btn" onclick="revealWorksheetAnswer()">Show Model Answer</button>
+      <div id="model-answer-box" style="display: none; margin-top: 10px; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 6px;">
+        <strong>Model Answer:</strong> ${q.answer}
       </div>
     `;
   } else {
-    html += `
-      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
-      <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
-    `;
+    html += `<div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">`;
     let shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
     shuffledOptions.forEach((opt) => {
-      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; cursor: pointer; font-size: 0.95rem; color: inherit;">${opt}</button>`;
+      html += `<button class="quiz-option-btn" onclick="handleOptionClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color);">${opt}</button>`;
     });
     html += `</div>`;
   }
 
-  html += `<div id="quiz-feedback" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Next →</button></div></div>`;
+  html += `<div id="quiz-feedback" style="margin-top: 15px; font-weight: bold;"></div><div style="text-align: right; margin-top: 15px;"><button id="next-q-btn" onclick="nextQuestion()" style="display: none; background: #10b981;">Next →</button></div></div>`;
   displayArea.innerHTML = html;
 }
 
@@ -227,12 +297,12 @@ window.handleOptionClick = function(buttonElement, encodedChosen) {
   const nextBtn = document.getElementById('next-q-btn');
 
   if (chosen.trim().toLowerCase() === currentCorrectAnswer.trim().toLowerCase()) {
-    buttonElement.style.background = "#065f46"; buttonElement.style.borderColor = "#10b981";
-    feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!";
+    buttonElement.style.background = "#065f46"; buttonElement.style.color = "white";
+    feedbackEl.style.color = "#10b981"; feedbackEl.innerText = "Correct! 🎉";
     userScore++;
   } else {
-    buttonElement.style.background = "#991b1b"; buttonElement.style.borderColor = "#ef4444";
-    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
+    buttonElement.style.background = "#991b1b"; buttonElement.style.color = "white";
+    feedbackEl.style.color = "#ef4444"; feedbackEl.innerText = `Incorrect. Answer: ${currentCorrectAnswer}`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
@@ -246,14 +316,13 @@ window.submitBlankAnswer = function() {
   const nextBtn = document.getElementById('next-q-btn');
 
   inputEl.disabled = true;
-
   if (userAns === correctAns) {
-    inputEl.style.background = "#065f46"; inputEl.style.borderColor = "#10b981";
-    feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!";
+    inputEl.style.background = "#065f46"; inputEl.style.color = "white";
+    feedbackEl.style.color = "#10b981"; feedbackEl.innerText = "Correct! 🎉";
     userScore++;
   } else {
-    inputEl.style.background = "#991b1b"; inputEl.style.borderColor = "#ef4444";
-    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
+    inputEl.style.background = "#991b1b"; inputEl.style.color = "white";
+    feedbackEl.style.color = "#ef4444"; feedbackEl.innerText = `Incorrect. Answer: ${currentCorrectAnswer}`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
 };
@@ -270,14 +339,13 @@ window.revealWorksheetAnswer = function() {
 
 window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
 
-// --- AI FLASHCARD GENERATOR ---
+// --- FLASHCARD STUDIO ---
 function renderFlashcardPlayer() {
   const displayArea = document.getElementById('flashcard-display-area');
   if (!displayArea) return;
-  const isDark = currentTheme === 'dark';
 
   if (flashcardDeck.length === 0) {
-    displayArea.innerHTML = `<p style='color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 15px;'>No flashcards available. Generate them above!</p>`;
+    displayArea.innerHTML = `<p style='color: var(--text-sub); font-size: 0.9rem; text-align: center;'>No flashcards generated yet.</p>`;
     return;
   }
 
@@ -285,18 +353,15 @@ function renderFlashcardPlayer() {
   const currentCard = flashcardDeck[currentCardIndex];
 
   displayArea.innerHTML = `
-    <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; cursor: pointer; position: relative;" onclick="flipCardContent()">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 0.8rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
-        <button onclick="event.stopPropagation(); deleteCurrentCard(${currentCardIndex})" title="Delete Card" style="background: transparent; color: #ef4444; border: none; cursor: pointer; font-size: 0.85rem;">🗑️</button>
-      </div>
-      <div style="font-size: 1.1rem; color: inherit; margin: 15px 0; font-weight: 500;">${isShowingFront ? currentCard.front : currentCard.back}</div>
-      <div style="font-size: 0.75rem; color: ${isDark ? '#64748b' : '#94a3b8'};">(Click card to flip)</div>
+    <div style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; text-align: center; min-height: 100px; cursor: pointer;" onclick="flipCardContent()">
+      <div style="font-size: 0.8rem; color: var(--text-sub);">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
+      <div style="font-size: 1.1rem; margin: 15px 0; font-weight: 500;">${isShowingFront ? currentCard.front : currentCard.back}</div>
+      <div style="font-size: 0.75rem; color: var(--text-sub);">(Click to flip)</div>
     </div>
     <div style="display: flex; justify-content: space-between; margin-top: 10px;">
-      <button onclick="prevCard()" style="background: ${isDark ? '#334155' : '#e2e8f0'}; color: inherit; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Previous</button>
-      <button onclick="flipCardContent()" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Flip</button>
-      <button onclick="nextCard()" style="background: ${isDark ? '#334155' : '#e2e8f0'}; color: inherit; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Next</button>
+      <button onclick="prevCard()" style="background: var(--border-color); color: var(--text-color);">Previous</button>
+      <button onclick="flipCardContent()">Flip</button>
+      <button onclick="nextCard()" style="background: var(--border-color); color: var(--text-color);">Next</button>
     </div>
   `;
 }
@@ -311,7 +376,6 @@ window.nextCard = function() {
     recordActivity('flashcards', 1); 
   } 
 };
-window.deleteCurrentCard = function(index) { flashcardDeck.splice(index, 1); currentCardIndex = 0; renderFlashcardPlayer(); };
 
 const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
 if (generateFlashcardsBtn) {
@@ -320,36 +384,28 @@ if (generateFlashcardsBtn) {
     const countEl = document.getElementById('flashcard-count');
     const displayArea = document.getElementById('flashcard-display-area');
     if (!notesEl || !displayArea) return;
+    
     const notes = notesEl.value.trim();
-    const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
+    const count = parseInt(countEl ? countEl.value : '5', 10) || 5;
     if (!notes) return;
 
-    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>🤖 Generating flashcards with Groq...</p>";
+    displayArea.innerHTML = "<p style='color: var(--text-sub);'>🤖 Generating flashcards...</p>";
 
     try {
-      const prompt = `Based on the following text, generate exactly ${count} flashcards. 
-      Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
-      [
-        {
-          "front": "Key term or concept",
-          "back": "Detailed definition or explanation"
-        }
-      ]
-      Text to analyze: ${notes}`;
-
-      const result = await callGeminiAPI(prompt);
+      const prompt = `Based on the text, generate exactly ${count} flashcards. Return ONLY a valid JSON array: [{"front": "Term", "back": "Definition"}] Text: ${notes}`;
+      const result = await callGroqAPI(prompt);
       flashcardDeck = flashcardDeck.concat(result);
       currentCardIndex = flashcardDeck.length - result.length;
       isShowingFront = true;
       notesEl.value = '';
       renderFlashcardPlayer();
     } catch (error) {
-      displayArea.innerHTML = `<p style='color: #ef4444;'>Error generating flashcards: ${error.message}</p>`;
+      displayArea.innerHTML = `<p style='color: #ef4444;'>Error: ${error.message}</p>`;
     }
   });
 }
 
-// Initialize on page load
+// --- INITIALIZE ON LOAD ---
 applyTheme(currentTheme);
 renderTasks();
 updateAnalyticsDisplay();
