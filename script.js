@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initNavigation();
   loadTasks();
-  loadFlashcards();
   initAnalytics();
 });
 
@@ -29,7 +28,6 @@ function toggleTheme() {
   currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
   localStorage.setItem('theme', currentTheme);
   initTheme();
-  // Re-render current quiz if active to apply theme colors
   if (currentQuizQuestions.length > 0) {
     renderQuizQuestion();
   }
@@ -43,7 +41,6 @@ function initNavigation() {
       e.preventDefault();
       const targetId = link.getAttribute('data-target');
       
-      document.querySelectorAll('.tab-content').tabContent?.forEach ? ... : null;
       document.querySelectorAll('.tab-content').forEach(section => {
         section.style.display = section.id === targetId ? 'block' : 'none';
       });
@@ -78,7 +75,6 @@ async function callGeminiAPI(promptText) {
     throw new Error("No response received from Gemini API.");
   }
 
-  // Clean up markdown blocks if returned by the model
   let cleanedJSON = rawText.trim();
   if (cleanedJSON.startsWith("```json")) {
     cleanedJSON = cleanedJSON.replace(/^```json/, "").replace(/```$/, "").trim();
@@ -211,7 +207,7 @@ function renderQuizQuestion() {
     `;
 
     shuffledDefinitionsPool.forEach((def, index) => {
-      let letterLabel = String.fromCharCode(65 + index); // A, B, C, etc.
+      let letterLabel = String.fromCharCode(65 + index);
       html += `
         <div style="padding: 12px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; color: inherit; font-size: 0.9rem; min-height: 44px; display: flex; align-items: center;">
           <span style="font-weight: bold; color: #10b981; margin-right: 8px;">${letterLabel}.</span> ${def}
@@ -344,7 +340,7 @@ function revealWorksheetAnswer() {
   if (box) box.style.display = 'block';
   if (revealBtn) revealBtn.style.display = 'none';
   
-  userScore++; // Count completion for open-ended
+  userScore++;
   if (nextBtn) nextBtn.style.display = 'inline-block';
 }
 
@@ -400,16 +396,7 @@ function deleteTask(index) {
   loadTasks();
 }
 
-// --- FLASHCARDS LOGIC ---
-function loadFlashcards() {
-  // Placeholder for flashcard deck management
-}
-
 // --- ANALYTICS / ACTIVITY LOGGING ---
-function initAnalytics() {
-  // Setup activity dashboard counters
-}
-
 function recordActivity(type, amount) {
   let stats = JSON.parse(localStorage.getItem('study_stats')) || { quizzes: 0, flashcards: 0 };
   stats[type] = (stats[type] || 0) + amount;
