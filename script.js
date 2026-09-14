@@ -6,6 +6,9 @@ let userScore = 0;
 let currentCorrectAnswer = "";
 let shuffledDefinitionsPool = [];
 
+// REPLACE WITH YOUR ACTUAL GEMINI API KEY IF NOT USING ENVIRONMENT INJECTION
+const GEMINI_API_KEY = ""; 
+
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   loadTasks();
@@ -81,18 +84,17 @@ function updateStatsDisplay() {
   if (flashEl) flashEl.textContent = stats.flashcards || 0;
 }
 
-function recordActivity(type, amount) {
+function generateFlashcards() {
   let stats = JSON.parse(localStorage.getItem('study_stats')) || { flashcards: 0 };
-  stats[type] = (stats[type] || 0) + amount;
+  stats.flashcards = (stats.flashcards || 0) + 1;
   localStorage.setItem('study_stats', JSON.stringify(stats));
   updateStatsDisplay();
-  alert('Flashcards generated and counted!');
+  alert('Flashcards successfully generated!');
 }
 
 // --- GEMINI API & QUIZ GENERATOR ---
 async function callGeminiAPI(promptText) {
-  const apiKey = ""; // Insert your key if needed
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -103,7 +105,7 @@ async function callGeminiAPI(promptText) {
   if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
   const data = await response.json();
   const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) throw new Error("No response from API.");
+  if (!rawText) throw new Error("No response received from Gemini API.");
 
   let cleaned = rawText.trim();
   if (cleaned.startsWith("```json")) cleaned = cleaned.replace(/^```json/, "").replace(/```$/, "").trim();
@@ -125,7 +127,7 @@ if (generateBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='opacity: 0.7;'>🤖 Generating activity...</p>";
+    displayArea.innerHTML = "<p style='opacity: 0.7;'>🤖 Generating activity via Gemini API...</p>";
     const notes = notesEl.value.trim();
     const count = parseInt(countEl ? countEl.value : '10', 10);
     const typeVal = typeEl ? typeEl.value : 'Matching';
@@ -135,9 +137,17 @@ if (generateBtn) {
       if (typeVal.toLowerCase().includes("matching")) {
         currentQuizMode = "matching";
         prompt = `Based on the following text, generate exactly ${count} matching pairs pairing a key term with its correct definition.
-        Return ONLY valid JSON in this exact array format:
+        Return ONLY valid JSON in this exact array format, with no extra text:
         [
           { "term": "Key term", "answer": "Correct definition" }
+        ]
+        Text: ${notes}`;
+      } else if (typeVal.toLowerCase().includes("fill")) {
+        currentQuizMode = "blank";
+        prompt = `Based on the following text, generate exactly ${count} fill-in-the-blank questions using "_____".
+        Return ONLY valid JSON in this exact array format:
+        [
+          { "question": "Sentence with _____ blank.", "answer": "word" }
         ]
         Text: ${notes}`;
       } else {
@@ -166,7 +176,7 @@ if (generateBtn) {
   });
 }
 
-// --- RENDER QUIZ / MATCHING (WITH SIDE-BY-SIDE MATCHING VIEW) ---
+// --- RENDER QUIZ / MATCHING (SIDE-BY-SIDE MATCHING VIEW) ---
 function renderQuizQuestion() {
   const displayArea = document.getElementById('content-display-area');
   if (!displayArea) return;
@@ -174,7 +184,7 @@ function renderQuizQuestion() {
 
   if (currentQuizMode === "matching") {
     let html = `
-      <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px;">
+      <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px;">
         <h4 style="margin-top: 0; color: var(--primary);">Matching Pairs (Side-by-Side View)</h4>
         <p style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 15px;">Review terms on the left and their corresponding definitions on the right:</p>
         
@@ -218,9 +228,9 @@ function renderQuizQuestion() {
     return;
   }
 
-  // Standard MCQ Question Renderer fallback
+  // Standard MCQ / Blank Renderer fallback
   if (currentQuizIndex >= currentQuizQuestions.length) {
-    displayArea.innerHTML = `<div style="text-align: center; padding: 15px;"><strong>Quiz Completed! Score: ${userScore}/${currentQuizQuestions.length}</strong></div>`;
+    displayArea.innerHTML = `<div style="text-align: center; padding: 15px;"><strong>Activity Completed! Score: ${userScore}/${currentQuizQuestions.length}</strong></div>`;
     return;
   }
 
@@ -230,10 +240,16 @@ function renderQuizQuestion() {
   html += `<div style="font-weight: bold; margin-bottom: 10px;">Question ${currentQuizIndex + 1}: ${q.question}</div>`;
   html += `<div style="display: flex; flex-direction: column; gap: 8px;" id="opt-container">`;
   
-  let shuffledOpts = [...q.options].sort(() => Math.random() - 0.5);
-  shuffledOpts.forEach(opt => {
-    html += `<button class="opt-btn" onclick="handleOptClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color);">${opt}</button>`;
-  });
+  if (currentQuizMode === "blank") {
+    html += `<input type="text" id="blank-input" placeholder="Your answer..." style="margin-bottom: 8px;">`;
+    html += `<button onclick="submitBlank()" style="background: var(--primary);">Submit</button>`;
+  } else {
+    let shuffledOpts = [...q.options].sort(() => Math.random() - 0.5);
+    shuffledOpts.forEach(opt => {
+      html += `<button class="opt-btn" onclick="handleOptClick(this, '${encodeURIComponent(opt)}')" style="text-align: left; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color);">${opt}</button>`;
+    });
+  }
+
   html += `</div><div id="q-feedback" style="margin-top: 10px; font-weight: bold;"></div>`;
   html += `<button id="next-btn" onclick="nextQ()" style="display:none; margin-top: 10px; background: #10b981;">Next →</button></div>`;
   displayArea.innerHTML = html;
@@ -257,6 +273,24 @@ function handleOptClick(btn, encodedChoice) {
     feedback.textContent = `Incorrect. Correct was: ${currentCorrectAnswer}`;
     feedback.style.color = '#ef4444';
   }
+  if (nextBtn) nextBtn.style.display = 'inline-block';
+}
+
+function submitBlank() {
+  const input = document.getElementById('blank-input');
+  const feedback = document.getElementById('q-feedback');
+  const nextBtn = document.getElementById('next-btn');
+  if (!input) return;
+
+  if (input.value.trim().toLowerCase() === currentCorrectAnswer.trim().toLowerCase()) {
+    feedback.textContent = 'Correct! 🎉';
+    feedback.style.color = '#10b981';
+    userScore++;
+  } else {
+    feedback.textContent = `Incorrect. Correct answer: ${currentCorrectAnswer}`;
+    feedback.style.color = '#ef4444';
+  }
+  input.disabled = true;
   if (nextBtn) nextBtn.style.display = 'inline-block';
 }
 
