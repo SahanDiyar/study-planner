@@ -20,6 +20,7 @@ let currentQuizIndex = 0;
 let userScore = 0;
 let currentCorrectAnswer = "";
 let currentQuizMode = "mcq"; // "mcq", "blank", "matching", "worksheet"
+let shuffledDefinitionsPool = [];
 
 // --- API KEY HELPER ---
 function getApiKey() {
@@ -274,7 +275,7 @@ if (generateContentBtn) {
         Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
         [
           {
-            "question": "Match the term: Key term or concept",
+            "term": "Key term or concept",
             "answer": "Correct definition or explanation"
           }
         ]
@@ -308,6 +309,11 @@ if (generateContentBtn) {
       currentQuizQuestions = result;
       currentQuizIndex = 0;
       userScore = 0;
+
+      if (currentQuizMode === "matching") {
+        shuffledDefinitionsPool = result.map(item => item.answer).sort(() => Math.random() - 0.5);
+      }
+
       renderQuizQuestion();
       recordActivity('quizzes', 1);
     } catch (error) {
@@ -320,6 +326,40 @@ function renderQuizQuestion() {
   const displayArea = document.getElementById('content-display-area');
   if (!displayArea) return;
   const isDark = currentTheme === 'dark';
+
+  if (currentQuizMode === "matching") {
+    let html = `
+      <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px;">
+        <h3 style="margin-top: 0; color: #3b82f6;">Matching Pairs Worksheet</h3>
+        <p style="font-size: 0.9rem; color: ${isDark ? '#94a3b8' : '#64748b'}; margin-bottom: 20px;">Match each term on the left with its definition on the right using the dropdowns:</p>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+    `;
+
+    currentQuizQuestions.forEach((q, index) => {
+      html += `
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; align-items: center; padding: 12px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px;">
+          <div style="font-weight: bold; color: inherit; font-size: 0.95rem;">${index + 1}. ${q.term}</div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <select id="match-select-${index}" style="padding: 8px 12px; background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 4px; color: inherit; font-size: 0.85rem; width: 100%;">
+              <option value="">-- Choose matching definition --</option>
+      `;
+      shuffledDefinitionsPool.forEach(def => {
+        html += `<option value="${encodeURIComponent(def)}">${def}</option>`;
+      });
+      html += `</select><div id="match-feedback-${index}" style="font-size: 0.8rem; font-weight: bold;"></div></div></div>`;
+    });
+
+    html += `
+        </div>
+        <div style="margin-top: 20px; text-align: right;">
+          <button onclick="checkMatchingAnswers()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Check Answers</button>
+        </div>
+        <div id="matching-score-summary" style="margin-top: 15px; font-weight: bold; font-size: 1rem; text-align: center;"></div>
+      </div>
+    `;
+    displayArea.innerHTML = html;
+    return;
+  }
 
   if (currentQuizIndex >= currentQuizQuestions.length) {
     displayArea.innerHTML = `
@@ -344,14 +384,6 @@ function renderQuizQuestion() {
       <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <input type="text" id="blank-user-answer" placeholder="Type your answer here..." style="padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; color: inherit; width: 100%; box-sizing: border-box;">
-        <button onclick="submitBlankAnswer()" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: fit-content;">Submit Answer</button>
-      </div>
-    `;
-  } else if (currentQuizMode === "matching") {
-    html += `
-      <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <input type="text" id="blank-user-answer" placeholder="Type the matching definition..." style="padding: 10px 14px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-size: 1rem; color: inherit; width: 100%; box-sizing: border-box;">
         <button onclick="submitBlankAnswer()" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: fit-content;">Submit Answer</button>
       </div>
     `;
@@ -419,6 +451,34 @@ window.submitBlankAnswer = function() {
     feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
   }
   if (nextBtn) nextBtn.style.display = 'inline-block';
+};
+
+window.checkMatchingAnswers = function() {
+  let correctCount = 0;
+  currentQuizQuestions.forEach((q, index) => {
+    const selectEl = document.getElementById(`match-select-${index}`);
+    const feedbackEl = document.getElementById(`match-feedback-${index}`);
+    if (!selectEl || !feedbackEl) return;
+
+    selectEl.disabled = true;
+    const selectedVal = decodeURIComponent(selectEl.value).trim().toLowerCase();
+    const correctVal = q.answer.trim().toLowerCase();
+
+    if (selectedVal === correctVal) {
+      selectEl.style.background = "#065f46"; selectEl.style.borderColor = "#10b981";
+      feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "✓ Correct match!";
+      correctCount++;
+    } else {
+      selectEl.style.background = "#991b1b"; selectEl.style.borderColor = "#ef4444";
+      feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `✗ Correct definition: ${q.answer}`;
+    }
+  });
+
+  const summaryEl = document.getElementById('matching-score-summary');
+  if (summaryEl) {
+    summaryEl.style.color = "#3b82f6";
+    summaryEl.innerText = `Matching Completed! Score: ${correctCount}/${currentQuizQuestions.length}`;
+  }
 };
 
 window.revealWorksheetAnswer = function() {
