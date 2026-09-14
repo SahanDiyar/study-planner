@@ -1,239 +1,95 @@
-let tasks = JSON.parse(localStorage.getItem('study_tasks')) || [];
-let activityLog = JSON.parse(localStorage.getItem('study_activity_log')) || [];
-
-const todayStr = new Date().toDateString();
-const lastActiveDate = localStorage.getItem('study_last_active_date');
-
-if (lastActiveDate !== todayStr) {
-  activityLog = [];
-  localStorage.setItem('study_activity_log', JSON.stringify(activityLog));
-  localStorage.setItem('study_last_active_date', todayStr);
-}
-
-// --- FLASHCARD STATE ---
-let flashcardDeck = [];
-let currentCardIndex = 0;
-let isShowingFront = true;
-
+// --- STATE & GLOBAL VARIABLES ---
+let currentTheme = localStorage.getItem('theme') || 'dark';
+let currentQuizMode = 'mcq';
 let currentQuizQuestions = [];
 let currentQuizIndex = 0;
 let userScore = 0;
 let currentCorrectAnswer = "";
-let currentQuizMode = "mcq"; // "mcq", "blank", "matching", "worksheet"
 let shuffledDefinitionsPool = [];
 
-// --- API KEY HELPER ---
-function getApiKey() {
-  return "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";
-}
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  initNavigation();
+  loadTasks();
+  loadFlashcards();
+  initAnalytics();
+});
 
-// --- THEME / DARK MODE MANAGER ---
-let currentTheme = localStorage.getItem('study_hub_theme') || 'light';
-
-function applyTheme(theme) {
-  const body = document.getElementById('body-layout');
-  const toggleBtn = document.getElementById('theme-toggle-btn');
-  const cards = document.querySelectorAll('.theme-card');
-  const texts = document.querySelectorAll('.theme-text');
-  const textSubs = document.querySelectorAll('.theme-text-sub');
-  const inputs = document.querySelectorAll('input[type="text"], textarea, select');
-  const tableHeaders = document.querySelectorAll('.theme-table-header');
-
-  if (theme === 'dark') {
-    if (body) { body.style.background = '#0f172a'; body.style.color = '#f8fafc'; }
-    if (toggleBtn) { toggleBtn.innerText = '☀️ Light Mode'; toggleBtn.style.background = '#334155'; toggleBtn.style.color = '#f8fafc'; }
-    
-    cards.forEach(card => { card.style.background = '#1e293b'; card.style.border = '1px solid #334155'; });
-    texts.forEach(t => t.style.color = '#f8fafc');
-    textSubs.forEach(ts => ts.style.color = '#94a3b8');
-    
-    inputs.forEach(inp => { 
-      inp.style.background = '#0f172a'; 
-      inp.style.borderColor = '#475569'; 
-      inp.style.color = '#f8fafc'; 
-    });
-    
-    tableHeaders.forEach(th => { th.style.background = '#0f172a'; th.style.color = '#cbd5e1'; });
-  } else {
-    if (body) { body.style.background = '#f1f5f9'; body.style.color = '#1e293b'; }
-    if (toggleBtn) { toggleBtn.innerText = '🌙 Dark Mode'; toggleBtn.style.background = '#e2e8f0'; toggleBtn.style.color = '#1e293b'; }
-    
-    cards.forEach(card => { card.style.background = 'white'; card.style.border = 'none'; });
-    texts.forEach(t => t.style.color = '#334155');
-    textSubs.forEach(ts => ts.style.color = '#64748b');
-    
-    inputs.forEach(inp => { 
-      inp.style.background = '#ffffff'; 
-      inp.style.borderColor = '#cbd5e1'; 
-      inp.style.color = '#1e293b'; 
-    });
-    
-    tableHeaders.forEach(th => { th.style.background = '#f8fafc'; th.style.color = '#475569'; });
+// --- THEME MANAGEMENT ---
+function initTheme() {
+  document.body.className = currentTheme === 'dark' ? 'dark-theme' : 'light-theme';
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  if (themeToggleBtn) {
+    themeToggleBtn.textContent = currentTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
   }
 }
 
-window.toggleDarkMode = function() {
-  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-  localStorage.setItem('study_hub_theme', currentTheme);
-  applyTheme(currentTheme);
-  renderTasks();
-  renderScheduleTable();
-  renderFlashcardPlayer();
-};
-
-// --- TASK MANAGER ---
-const addTaskBtn = document.getElementById('add-task-btn');
-const taskInput = document.getElementById('task-input');
-const taskList = document.getElementById('task-list');
-
-function renderTasks() {
-  if (!taskList) return;
-  taskList.innerHTML = '';
-  tasks.forEach((task, index) => {
-    const li = document.createElement('li');
-    const isDark = currentTheme === 'dark';
-    li.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid ${isDark ? '#334155' : '#e5e7eb'};`;
-    li.innerHTML = `
-      <span style="${task.completed ? 'text-decoration: line-through; color: #9ca3af;' : (isDark ? 'color: #f8fafc;' : 'color: #1f2937;')}">${task.text}</span>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${index})" style="width: 18px; height: 18px; cursor: pointer;">
-        <button onclick="deleteTask(${index})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Delete</button>
-      </div>
-    `;
-    taskList.appendChild(li);
-  });
-  updateAnalyticsDisplay();
+function toggleTheme() {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', currentTheme);
+  initTheme();
+  // Re-render current quiz if active to apply theme colors
+  if (currentQuizQuestions.length > 0) {
+    renderQuizQuestion();
+  }
 }
 
-window.toggleTask = function(index) {
-  tasks[index].completed = !tasks[index].completed;
-  if (tasks[index].completed) recordActivity('tasks', 1);
-  localStorage.setItem('study_tasks', JSON.stringify(tasks));
-  renderTasks();
-};
+// --- NAVIGATION TABS ---
+function initNavigation() {
+  const navLinks = document.querySelectorAll('.nav-link');
+  navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = link.getAttribute('data-target');
+      
+      document.querySelectorAll('.tab-content').tabContent?.forEach ? ... : null;
+      document.querySelectorAll('.tab-content').forEach(section => {
+        section.style.display = section.id === targetId ? 'block' : 'none';
+      });
 
-window.deleteTask = function(index) {
-  tasks.splice(index, 1);
-  localStorage.setItem('study_tasks', JSON.stringify(tasks));
-  renderTasks();
-};
-
-if (addTaskBtn && taskInput) {
-  addTaskBtn.addEventListener('click', () => {
-    const text = taskInput.value.trim();
-    if (text) {
-      tasks.push({ text, completed: false });
-      taskInput.value = '';
-      localStorage.setItem('study_tasks', JSON.stringify(tasks));
-      renderTasks();
-    }
-  });
-}
-
-// --- ACTIVITY LOG & ANALYTICS ---
-function recordActivity(type, amount) {
-  activityLog.push({ type, amount, date: new Date().toISOString() });
-  localStorage.setItem('study_activity_log', JSON.stringify(activityLog));
-  updateAnalyticsDisplay();
-}
-
-function updateAnalyticsDisplay() {
-  const completedTasksCount = tasks.filter(t => t.completed).length;
-  const totalFlashcards = activityLog.filter(a => a.type === 'flashcards').reduce((sum, a) => sum + a.amount, 0);
-  
-  const completedEl = document.getElementById('completed-tasks-metric');
-  const flashcardsEl = document.getElementById('flashcards-reviewed-metric');
-  
-  if (completedEl) completedEl.innerText = completedTasksCount;
-  if (flashcardsEl) flashcardsEl.innerText = totalFlashcards;
-}
-
-// --- WEEKLY SCHEDULE ---
-let weeklyScheduleData = JSON.parse(localStorage.getItem('study_weekly_schedule_grid')) || {
-  Sunday: Array(7).fill(''), Monday: Array(7).fill(''), Tuesday: Array(7).fill(''), Wednesday: Array(7).fill(''), Thursday: Array(7).fill('')
-};
-
-function renderScheduleTable() {
-  const tbody = document.getElementById('schedule-table-body');
-  if (!tbody) return;
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-  const isDark = currentTheme === 'dark';
-  let html = '';
-  for (let i = 0; i < 7; i++) {
-    html += `<tr><td style="padding: 8px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; background: ${isDark ? '#0f172a' : '#f8fafc'}; font-weight: bold; color: ${isDark ? '#cbd5e1' : '#475569'};">Period ${i + 1}</td>`;
-    days.forEach(day => {
-      const val = weeklyScheduleData[day]?.[i] || '';
-      html += `<td style="padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'};"><input type="text" data-day="${day}" data-period="${i}" value="${val}" placeholder="Subject ${i + 1}" style="width: 100%; padding: 6px; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 4px; font-size: 0.85rem; text-align: center; background: ${isDark ? '#0f172a' : '#ffffff'}; color: ${isDark ? '#f8fafc' : '#1e293b'};"></td>`;
+      navLinks.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
     });
-    html += `</tr>`;
-  }
-  tbody.innerHTML = html;
+  });
 }
 
-window.saveScheduleTable = function() {
-  ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'].forEach(day => {
-    weeklyScheduleData[day] = [];
-    for (let i = 0; i < 7; i++) {
-      const input = document.querySelector(`input[data-day="${day}"][data-period="${i}"]`);
-      weeklyScheduleData[day].push(input ? input.value.trim() : '');
-    }
-  });
-  localStorage.setItem('study_weekly_schedule_grid', JSON.stringify(weeklyScheduleData));
-  const feedback = document.getElementById('schedule-save-feedback');
-  if (feedback) { feedback.innerText = "Saved successfully!"; setTimeout(() => { feedback.innerText = ""; }, 2000); }
-};
-
-window.toggleScheduleVisibility = function() {
-  const wrapper = document.getElementById('schedule-content-wrapper');
-  const btn = document.getElementById('toggle-schedule-btn');
-  if (!wrapper || !btn) return;
-  
-  if (wrapper.style.display === 'none' || wrapper.style.display === '') {
-    wrapper.style.display = 'block';
-    btn.innerText = 'Hide Schedule';
-  } else {
-    wrapper.style.display = 'none';
-    btn.innerText = 'View Schedule';
-  }
-};
-
-const scheduleWrapper = document.getElementById('schedule-content-wrapper');
-const scheduleBtn = document.getElementById('toggle-schedule-btn');
-if (scheduleWrapper) scheduleWrapper.style.display = 'none';
-if (scheduleBtn) scheduleBtn.innerText = 'View Schedule';
-
-// --- GROQ API CALL FUNCTION ---
+// --- GEMINI API INTEGRATION ---
 async function callGeminiAPI(promptText) {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error("API Key is required.");
-  }
+  const apiKey = ""; // Add your key or leave it for environment handling
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const response = await fetch(url, {
     method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: "openai/gpt-oss-120b",
-      messages: [{ role: "user", content: promptText }]
+      contents: [{ parts: [{ text: promptText }] }]
     })
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`API Error (${response.status}): ${errorBody || response.statusText}`);
+    throw new Error(`API Error: ${response.statusText}`);
   }
 
   const data = await response.json();
-  const textOutput = data.choices[0].message.content;
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
   
-  let cleanJson = textOutput.replace(/```json/g, '').replace(/```/g, '').trim();
-  return JSON.parse(cleanJson);
+  if (!rawText) {
+    throw new Error("No response received from Gemini API.");
+  }
+
+  // Clean up markdown blocks if returned by the model
+  let cleanedJSON = rawText.trim();
+  if (cleanedJSON.startsWith("```json")) {
+    cleanedJSON = cleanedJSON.replace(/^```json/, "").replace(/```$/, "").trim();
+  } else if (cleanedJSON.startsWith("```")) {
+    cleanedJSON = cleanedJSON.replace(/^```/, "").replace(/```$/, "").trim();
+  }
+
+  return JSON.parse(cleanedJSON);
 }
 
-// --- AI QUIZ GENERATOR ---
+// --- AI QUIZ & ACTIVITY GENERATOR ---
 const generateContentBtn = document.getElementById('generate-content-btn');
 if (generateContentBtn) {
   generateContentBtn.addEventListener('click', async () => {
@@ -252,7 +108,7 @@ if (generateContentBtn) {
       return;
     }
 
-    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Groq is analyzing your text and generating your activity...</p>";
+    displayArea.innerHTML = "<p style='color: #94a3b8;'>🤖 Analyzing your text and generating your activity...</p>";
 
     try {
       let prompt = "";
@@ -330,31 +186,45 @@ function renderQuizQuestion() {
   if (currentQuizMode === "matching") {
     let html = `
       <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px;">
-        <h3 style="margin-top: 0; color: #3b82f6;">Matching Pairs Worksheet</h3>
-        <p style="font-size: 0.9rem; color: ${isDark ? '#94a3b8' : '#64748b'}; margin-bottom: 20px;">Match each term on the left with its definition on the right using the dropdowns:</p>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
+        <h3 style="margin-top: 0; color: #3b82f6;">Matching Pairs (Side-by-Side View)</h3>
+        <p style="font-size: 0.9rem; color: ${isDark ? '#94a3b8' : '#64748b'}; margin-bottom: 20px;">Review the terms on the left and their corresponding definitions directly on the right:</p>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+          <!-- Left Column: Terms -->
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <h4 style="margin: 0 0 5px 0; color: #3b82f6; font-size: 0.95rem;">Terms</h4>
     `;
 
     currentQuizQuestions.forEach((q, index) => {
       html += `
-        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; align-items: center; padding: 12px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px;">
-          <div style="font-weight: bold; color: inherit; font-size: 0.95rem;">${index + 1}. ${q.term}</div>
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <select id="match-select-${index}" style="padding: 8px 12px; background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 4px; color: inherit; font-size: 0.85rem; width: 100%;">
-              <option value="">-- Choose matching definition --</option>
+        <div style="padding: 12px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; font-weight: bold; color: inherit; font-size: 0.9rem; min-height: 44px; display: flex; align-items: center;">
+          ${index + 1}. ${q.term}
+        </div>
       `;
-      shuffledDefinitionsPool.forEach(def => {
-        html += `<option value="${encodeURIComponent(def)}">${def}</option>`;
-      });
-      html += `</select><div id="match-feedback-${index}" style="font-size: 0.8rem; font-weight: bold;"></div></div></div>`;
     });
 
     html += `
+          </div>
+          <!-- Right Column: Definitions (Shuffled) -->
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <h4 style="margin: 0 0 5px 0; color: #10b981; font-size: 0.95rem;">Definitions</h4>
+    `;
+
+    shuffledDefinitionsPool.forEach((def, index) => {
+      let letterLabel = String.fromCharCode(65 + index); // A, B, C, etc.
+      html += `
+        <div style="padding: 12px; background: ${isDark ? '#1e293b' : 'white'}; border: 1px solid ${isDark ? '#475569' : '#cbd5e1'}; border-radius: 6px; color: inherit; font-size: 0.9rem; min-height: 44px; display: flex; align-items: center;">
+          <span style="font-weight: bold; color: #10b981; margin-right: 8px;">${letterLabel}.</span> ${def}
         </div>
-        <div style="margin-top: 20px; text-align: right;">
-          <button onclick="checkMatchingAnswers()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Check Answers</button>
+      `;
+    });
+
+    html += `
+          </div>
         </div>
-        <div id="matching-score-summary" style="margin-top: 15px; font-weight: bold; font-size: 1rem; text-align: center;"></div>
+        <div style="text-align: center; margin-top: 15px;">
+          <button onclick="location.reload()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Generate New Activity</button>
+        </div>
       </div>
     `;
     displayArea.innerHTML = html;
@@ -399,7 +269,6 @@ function renderQuizQuestion() {
       </div>
     `;
   } else {
-    // MCQ
     html += `
       <div style="font-size: 1.1rem; color: inherit; font-weight: 500; margin-bottom: 20px;">${q.question}</div>
       <div style="display: flex; flex-direction: column; gap: 10px;" id="options-container">
@@ -415,166 +284,134 @@ function renderQuizQuestion() {
   displayArea.innerHTML = html;
 }
 
-window.handleOptionClick = function(buttonElement, encodedChosen) {
-  const chosen = decodeURIComponent(encodedChosen);
-  document.querySelectorAll('.quiz-option-btn').forEach(btn => btn.disabled = true);
+function handleOptionClick(btnElement, encodedChoice) {
+  const chosen = decodeURIComponent(encodedChoice);
   const feedbackEl = document.getElementById('quiz-feedback');
   const nextBtn = document.getElementById('next-q-btn');
+  const allBtns = document.querySelectorAll('.quiz-option-btn');
 
-  if (chosen.trim().toLowerCase() === currentCorrectAnswer.trim().toLowerCase()) {
-    buttonElement.style.background = "#065f46"; buttonElement.style.borderColor = "#10b981";
-    feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!";
+  allBtns.forEach(b => b.disabled = true);
+
+  if (chosen === currentCorrectAnswer) {
+    btnElement.style.background = '#10b981';
+    btnElement.style.color = 'white';
+    feedbackEl.textContent = 'Correct! 🎉';
+    feedbackEl.style.color = '#10b981';
     userScore++;
   } else {
-    buttonElement.style.background = "#991b1b"; buttonElement.style.borderColor = "#ef4444";
-    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
+    btnElement.style.background = '#ef4444';
+    btnElement.style.color = 'white';
+    feedbackEl.textContent = `Incorrect. Correct answer was: ${currentCorrectAnswer}`;
+    feedbackEl.style.color = '#ef4444';
+    
+    allBtns.forEach(b => {
+      if (b.textContent === currentCorrectAnswer) {
+        b.style.background = '#10b981';
+        b.style.color = 'white';
+      }
+    });
   }
-  if (nextBtn) nextBtn.style.display = 'inline-block';
-};
 
-window.submitBlankAnswer = function() {
+  if (nextBtn) nextBtn.style.display = 'inline-block';
+}
+
+function submitBlankAnswer() {
   const inputEl = document.getElementById('blank-user-answer');
-  if (!inputEl) return;
-  const userAns = inputEl.value.trim().toLowerCase();
-  const correctAns = currentCorrectAnswer.trim().toLowerCase();
   const feedbackEl = document.getElementById('quiz-feedback');
   const nextBtn = document.getElementById('next-q-btn');
+  if (!inputEl) return;
 
+  const userVal = inputEl.value.trim().toLowerCase();
+  const correctVal = currentCorrectAnswer.trim().toLowerCase();
   inputEl.disabled = true;
 
-  if (userAns === correctAns) {
-    inputEl.style.background = "#065f46"; inputEl.style.borderColor = "#10b981";
-    feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "Correct!";
+  if (userVal === correctVal) {
+    feedbackEl.textContent = 'Correct! 🎉';
+    feedbackEl.style.color = '#10b981';
     userScore++;
   } else {
-    inputEl.style.background = "#991b1b"; inputEl.style.borderColor = "#ef4444";
-    feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `Incorrect. Correct Answer: ${currentCorrectAnswer}`;
+    feedbackEl.textContent = `Incorrect. The correct answer is: ${currentCorrectAnswer}`;
+    feedbackEl.style.color = '#ef4444';
   }
+
   if (nextBtn) nextBtn.style.display = 'inline-block';
-};
+}
 
-window.checkMatchingAnswers = function() {
-  let correctCount = 0;
-  currentQuizQuestions.forEach((q, index) => {
-    const selectEl = document.getElementById(`match-select-${index}`);
-    const feedbackEl = document.getElementById(`match-feedback-${index}`);
-    if (!selectEl || !feedbackEl) return;
-
-    selectEl.disabled = true;
-    const selectedVal = decodeURIComponent(selectEl.value).trim().toLowerCase();
-    const correctVal = q.answer.trim().toLowerCase();
-
-    if (selectedVal === correctVal) {
-      selectEl.style.background = "#065f46"; selectEl.style.borderColor = "#10b981";
-      feedbackEl.style.color = "#34d399"; feedbackEl.innerText = "✓ Correct match!";
-      correctCount++;
-    } else {
-      selectEl.style.background = "#991b1b"; selectEl.style.borderColor = "#ef4444";
-      feedbackEl.style.color = "#f87171"; feedbackEl.innerText = `✗ Correct definition: ${q.answer}`;
-    }
-  });
-
-  const summaryEl = document.getElementById('matching-score-summary');
-  if (summaryEl) {
-    summaryEl.style.color = "#3b82f6";
-    summaryEl.innerText = `Matching Completed! Score: ${correctCount}/${currentQuizQuestions.length}`;
-  }
-};
-
-window.revealWorksheetAnswer = function() {
+function revealWorksheetAnswer() {
   const box = document.getElementById('model-answer-box');
   const revealBtn = document.getElementById('reveal-btn');
   const nextBtn = document.getElementById('next-q-btn');
   if (box) box.style.display = 'block';
   if (revealBtn) revealBtn.style.display = 'none';
+  
+  userScore++; // Count completion for open-ended
   if (nextBtn) nextBtn.style.display = 'inline-block';
-  userScore++;
-};
-
-window.nextQuestion = function() { currentQuizIndex++; renderQuizQuestion(); };
-
-// --- AI FLASHCARD GENERATOR ---
-function renderFlashcardPlayer() {
-  const displayArea = document.getElementById('flashcard-display-area');
-  if (!displayArea) return;
-  const isDark = currentTheme === 'dark';
-
-  if (flashcardDeck.length === 0) {
-    displayArea.innerHTML = `<p style='color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 15px;'>No flashcards available. Generate them above!</p>`;
-    return;
-  }
-
-  if (currentCardIndex >= flashcardDeck.length) currentCardIndex = 0;
-  const currentCard = flashcardDeck[currentCardIndex];
-
-  displayArea.innerHTML = `
-    <div style="background: ${isDark ? '#0f172a' : '#f8fafc'}; border: 1px solid ${isDark ? '#334155' : '#cbd5e1'}; border-radius: 8px; padding: 20px; text-align: center; min-height: 120px; cursor: pointer; position: relative;" onclick="flipCardContent()">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 0.8rem; color: ${isDark ? '#94a3b8' : '#64748b'}; font-weight: 600;">Card ${currentCardIndex + 1} of ${flashcardDeck.length}</div>
-        <button onclick="event.stopPropagation(); deleteCurrentCard(${currentCardIndex})" title="Delete Card" style="background: transparent; color: #ef4444; border: none; cursor: pointer; font-size: 0.85rem;">🗑️</button>
-      </div>
-      <div style="font-size: 1.1rem; color: inherit; margin: 15px 0; font-weight: 500;">${isShowingFront ? currentCard.front : currentCard.back}</div>
-      <div style="font-size: 0.75rem; color: ${isDark ? '#64748b' : '#94a3b8'};">(Click card to flip)</div>
-    </div>
-    <div style="display: flex; justify-content: space-between; margin-top: 10px;">
-      <button onclick="prevCard()" style="background: ${isDark ? '#334155' : '#e2e8f0'}; color: inherit; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Previous</button>
-      <button onclick="flipCardContent()" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Flip</button>
-      <button onclick="nextCard()" style="background: ${isDark ? '#334155' : '#e2e8f0'}; color: inherit; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Next</button>
-    </div>
-  `;
 }
 
-window.flipCardContent = function() { isShowingFront = !isShowingFront; renderFlashcardPlayer(); };
-window.prevCard = function() { if (currentCardIndex > 0) { currentCardIndex--; isShowingFront = true; renderFlashcardPlayer(); } };
-window.nextCard = function() { 
-  if (currentCardIndex < flashcardDeck.length - 1) { 
-    currentCardIndex++; 
-    isShowingFront = true; 
-    renderFlashcardPlayer(); 
-    recordActivity('flashcards', 1); 
-  } 
-};
-window.deleteCurrentCard = function(index) { flashcardDeck.splice(index, 1); currentCardIndex = 0; renderFlashcardPlayer(); };
+function nextQuestion() {
+  currentQuizIndex++;
+  renderQuizQuestion();
+}
 
-const generateFlashcardsBtn = document.getElementById('generate-flashcards-btn');
-if (generateFlashcardsBtn) {
-  generateFlashcardsBtn.addEventListener('click', async () => {
-    const notesEl = document.getElementById('flashcard-notes');
-    const countEl = document.getElementById('flashcard-count');
-    const displayArea = document.getElementById('flashcard-display-area');
-    if (!notesEl || !displayArea) return;
-    const notes = notesEl.value.trim();
-    const count = parseInt(countEl ? countEl.value : '10', 10) || 10;
-    if (!notes) return;
+// --- TASK MANAGER LOGIC ---
+function loadTasks() {
+  const tasksList = document.getElementById('tasks-list');
+  if (!tasksList) return;
+  
+  const savedTasks = JSON.parse(localStorage.getItem('study_tasks')) || [];
+  tasksList.innerHTML = '';
 
-    displayArea.innerHTML = "<p style='color: #94a3b8; font-size: 0.9rem;'>🤖 Generating flashcards with Groq...</p>";
-
-    try {
-      const prompt = `Based on the following text, generate exactly ${count} flashcards. 
-      Return ONLY valid JSON in this exact array format, with no extra text or markdown formatting outside the JSON array:
-      [
-        {
-          "front": "Key term or concept",
-          "back": "Detailed definition or explanation"
-        }
-      ]
-      Text to analyze: ${notes}`;
-
-      const result = await callGeminiAPI(prompt);
-      flashcardDeck = flashcardDeck.concat(result);
-      currentCardIndex = flashcardDeck.length - result.length;
-      isShowingFront = true;
-      notesEl.value = '';
-      renderFlashcardPlayer();
-    } catch (error) {
-      displayArea.innerHTML = `<p style='color: #ef4444;'>Error generating flashcards: ${error.message}</p>`;
-    }
+  savedTasks.forEach((task, index) => {
+    const li = document.createElement('li');
+    li.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.05); border-radius: 6px;";
+    li.innerHTML = `
+      <span style="text-decoration: ${task.completed ? 'line-through' : 'none'};">${task.text}</span>
+      <div>
+        <button onclick="toggleTask(${index})" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; margin-right: 5px;">${task.completed ? 'Undo' : 'Done'}</button>
+        <button onclick="deleteTask(${index})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Delete</button>
+      </div>
+    `;
+    tasksList.appendChild(li);
   });
 }
 
-// Initialize on page load
-applyTheme(currentTheme);
-renderTasks();
-updateAnalyticsDisplay();
-renderFlashcardPlayer();
-renderScheduleTable();
+function addTask() {
+  const input = document.getElementById('new-task-input');
+  if (!input || !input.value.trim()) return;
+
+  const tasks = JSON.parse(localStorage.getItem('study_tasks')) || [];
+  tasks.push({ text: input.value.trim(), completed: false });
+  localStorage.setItem('study_tasks', JSON.stringify(tasks));
+  input.value = '';
+  loadTasks();
+}
+
+function toggleTask(index) {
+  const tasks = JSON.parse(localStorage.getItem('study_tasks')) || [];
+  tasks[index].completed = !tasks[index].completed;
+  localStorage.setItem('study_tasks', JSON.stringify(tasks));
+  loadTasks();
+}
+
+function deleteTask(index) {
+  const tasks = JSON.parse(localStorage.getItem('study_tasks')) || [];
+  tasks.splice(index, 1);
+  localStorage.setItem('study_tasks', JSON.stringify(tasks));
+  loadTasks();
+}
+
+// --- FLASHCARDS LOGIC ---
+function loadFlashcards() {
+  // Placeholder for flashcard deck management
+}
+
+// --- ANALYTICS / ACTIVITY LOGGING ---
+function initAnalytics() {
+  // Setup activity dashboard counters
+}
+
+function recordActivity(type, amount) {
+  let stats = JSON.parse(localStorage.getItem('study_stats')) || { quizzes: 0, flashcards: 0 };
+  stats[type] = (stats[type] || 0) + amount;
+  localStorage.setItem('study_stats', JSON.stringify(stats));
+}
